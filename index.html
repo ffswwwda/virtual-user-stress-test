@@ -1,446 +1,477 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="zh-CN" class="dark">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>虚拟用户压力测试 · 上市前的虚拟用户试用与挑刺</title>
-<link rel="icon" type="image/svg+xml" href="favicon.svg">
-<link rel="apple-touch-icon" href="favicon.svg">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>虚拟用户压力测试 · Virtual User Stress Test</title>
+<link rel="icon" href="favicon.svg">
 <style>
-:root{
-  --bg-dark:#0a0e1a; --bg-card:rgba(20,28,48,.6); --bg-glass:rgba(255,255,255,.06);
-  --border:rgba(255,255,255,.1); --border-glow:rgba(0,212,255,.3);
-  --tp:#fff; --ts:rgba(255,255,255,.6); --tm:rgba(255,255,255,.4);
-  --cyan:#00d4ff; --pink:#ff6b9d; --purple:#a855f7; --blue:#3b82f6;
-  --green:#10b981; --yellow:#fbbf24; --orange:#f97316; --red:#ef4444;
-  --grad:linear-gradient(135deg,#00d4ff 0%,#a855f7 50%,#ff6b9d 100%);
-  --ease:cubic-bezier(.25,.46,.45,.94);
-  --bg-light:#F7F5F5; --tp-l:#2b2f31; --ts-l:rgba(0,0,0,.58); --tm-l:rgba(0,0,0,.4);
-  --border-l:rgba(0,0,0,.08); --glass-l:rgba(255,255,255,.72);
-}
-*{margin:0;padding:0;box-sizing:border-box}
-body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'PingFang SC',sans-serif;min-height:100vh;overflow-x:hidden;cursor:none;transition:background .5s ease,color .5s ease}
-body.dark{background:var(--bg-dark);color:var(--tp)}
-body.light{background:var(--bg-light);color:var(--tp-l)}
-body.dark::before{content:'';position:fixed;inset:0;background-image:radial-gradient(circle at 15% 15%,rgba(0,212,255,.1) 0%,transparent 45%),radial-gradient(circle at 85% 25%,rgba(168,85,247,.1) 0%,transparent 45%),radial-gradient(circle at 50% 90%,rgba(255,107,157,.06) 0%,transparent 55%);pointer-events:none;z-index:0}
-body.dark::after{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(0,212,255,.03) 1px,transparent 1px),linear-gradient(90deg,rgba(0,212,255,.03) 1px,transparent 1px);background-size:60px 60px;pointer-events:none;z-index:0}
-body.light::before{content:'';position:fixed;inset:0;background-image:radial-gradient(circle at 15% 15%,rgba(0,195,243,.07) 0%,transparent 45%),radial-gradient(circle at 85% 25%,rgba(168,85,247,.05) 0%,transparent 45%);pointer-events:none;z-index:0}
-.cur{position:fixed;width:9px;height:9px;border-radius:50%;background:var(--grad);pointer-events:none;z-index:9999;transform:translate(-50%,-50%);transition:width .18s,height .18s;mix-blend-mode:screen}
-.cur-glow{position:fixed;width:34px;height:34px;border-radius:50%;background:radial-gradient(circle,rgba(0,212,255,.22),transparent 70%);pointer-events:none;z-index:9998;transform:translate(-50%,-50%)}
-.cur.hov{width:24px;height:24px}
-.navbar{position:fixed;top:0;left:0;right:0;height:64px;display:flex;align-items:center;justify-content:space-between;padding:0 28px;z-index:1000;background:rgba(10,14,26,.72);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-bottom:1px solid var(--border)}
-body.light .navbar{background:rgba(247,245,245,.8);border-bottom:1px solid var(--border-l)}
-.brand{display:flex;align-items:center;gap:12px;font-size:17px;font-weight:800;letter-spacing:.3px}
-.brand-logo{width:38px;height:38px;border-radius:11px;background:var(--grad);display:flex;align-items:center;justify-content:center;box-shadow:0 6px 20px rgba(0,212,255,.35)}
-.brand-logo svg{width:22px;height:22px;color:#fff}
-.nav-right{display:flex;align-items:center;gap:14px}
-.nav-link{font-size:13px;color:var(--ts);text-decoration:none;padding:8px 14px;border-radius:10px;border:1px solid var(--border);transition:.3s}
-.nav-link:hover{color:var(--tp);background:rgba(255,255,255,.05)}
-.theme-toggle{width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;border:1px solid var(--border);cursor:none;background:transparent;color:var(--tp)}
-.theme-toggle svg{width:20px;height:20px}
-.wrap{max-width:1180px;margin:0 auto;padding:104px 24px 90px;position:relative;z-index:1}
-.hero{text-align:center;padding:40px 0 10px}
-.hero h1{font-size:clamp(30px,5vw,52px);font-weight:900;line-height:1.1;letter-spacing:-.5px}
-.hero h1 .g{background:var(--grad);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
-.hero p{margin:22px auto 0;max-width:680px;font-size:16px;line-height:1.7;color:var(--ts)}
-.hero .cta{margin-top:34px;display:flex;gap:14px;justify-content:center;flex-wrap:wrap}
-.section{margin-top:88px}
-.sec-head{margin-bottom:30px}
-.sec-head .kicker{display:inline-flex;align-items:center;gap:8px;font-size:13px;font-weight:700;color:var(--cyan);letter-spacing:1px;text-transform:uppercase}
-.sec-head .kicker svg{width:18px;height:18px}
-.sec-head h2{font-size:28px;font-weight:850;margin-top:10px;letter-spacing:-.3px}
-.sec-head p{margin-top:10px;color:var(--ts);font-size:15px;line-height:1.6;max-width:760px}
-.glass{background:var(--bg-glass);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border:1px solid var(--border);border-radius:20px}
-body.light .glass{background:var(--glass-l);border-color:var(--border-l)}
+:root{--grad:linear-gradient(135deg,#00d4ff,#a855f7 55%,#ff6b9d);--glass:rgba(255,255,255,.06);--bd:rgba(255,255,255,.12);--tp:#e8ecf4;--tm:#9aa4b8;--td:#5f6678;--red:#ff6b6b;--green:#3ddc97;--amber:#ffb454}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:#0a0c14;color:var(--tp);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;line-height:1.6}
+body.light{background:#f4f6fb;color:#1a2030;--glass:rgba(255,255,255,.7);--bd:rgba(20,30,60,.1);--tp:#1a2030;--tm:#5a6480;--td:#8a92a8}
+a{color:#7db8ff;text-decoration:none}
+.wrap{max-width:1180px;margin:0 auto;padding:0 22px}
+.glass{background:var(--glass);border:1px solid var(--bd);border-radius:16px;backdrop-filter:blur(14px)}
+/* nav */
+nav{position:sticky;top:0;z-index:50;display:flex;align-items:center;gap:18px;padding:14px 22px;background:rgba(10,12,20,.72);backdrop-filter:blur(16px);border-bottom:1px solid var(--bd)}
+body.light nav{background:rgba(244,246,251,.8)}
+.brand{display:flex;align-items:center;gap:10px;font-weight:600;font-size:16px}
+.brand .logo{width:30px;height:30px;border-radius:9px;background:var(--grad);display:flex;align-items:center;justify-content:center}
+.nav-links{display:flex;gap:6px;margin-left:auto}
+.nav-link{padding:8px 16px;border-radius:10px;color:var(--tm);font-size:14px;cursor:pointer;transition:.18s}
+.nav-link:hover{color:var(--tp);background:var(--glass)}
+.nav-link.on{color:#fff;background:var(--grad)}
+body.light .nav-link.on{color:#fff}
+#themeBtn{width:38px;height:38px;border-radius:10px;border:1px solid var(--bd);background:var(--glass);color:var(--tp);cursor:pointer;display:flex;align-items:center;justify-content:center}
+/* hero */
+.hero{padding:64px 0 40px;text-align:center}
+.hero h1{font-size:40px;font-weight:700;letter-spacing:-.5px;background:var(--grad);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:16px}
+.hero p{color:var(--tm);font-size:16px;max-width:680px;margin:0 auto 26px}
+.cta{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+.btn{padding:12px 22px;border-radius:12px;font-size:14px;font-weight:500;border:1px solid var(--bd);background:var(--glass);color:var(--tp);cursor:pointer;transition:.18s;display:inline-flex;align-items:center}
+.btn:hover{transform:translateY(-1px)}
+.btn-primary{background:var(--grad);border:none;color:#fff}
+.btn-sec{color:var(--tm)}
+.btn:disabled{opacity:.55;cursor:not-allowed;transform:none}
+/* sections */
+.section{padding:40px 0}
+.section h2{font-size:26px;font-weight:700;margin-bottom:8px}
+.section .sub{color:var(--tm);margin-bottom:26px;font-size:15px}
 .grid{display:grid;gap:18px}
-.cols-4{grid-template-columns:repeat(4,1fr)}
-.cols-3{grid-template-columns:repeat(3,1fr)}
-.cols-2{grid-template-columns:repeat(2,1fr)}
-.card{padding:24px;position:relative;overflow:hidden;transition:all .4s var(--ease)}
-.card:hover{transform:translateY(-4px);border-color:var(--border-glow)}
-.card .ic{width:42px;height:42px;border-radius:12px;background:var(--grad);display:flex;align-items:center;justify-content:center;margin-bottom:16px;box-shadow:0 6px 18px rgba(0,212,255,.25)}
-.card .ic svg{width:22px;height:22px;color:#fff}
-.card h3{font-size:16px;font-weight:750;margin-bottom:8px}
-.card p{font-size:13.5px;line-height:1.65;color:var(--ts)}
-.card .num{position:absolute;top:18px;right:22px;font-size:34px;font-weight:900;color:rgba(255,255,255,.06)}
-body.light .card .num{color:rgba(0,0,0,.05)}
-.step-line{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--tm);margin-top:14px}
-.cmp{display:grid;grid-template-columns:1fr auto 1fr;gap:18px;align-items:stretch}
-.cmp .col{padding:26px}
-.cmp .mid{display:flex;align-items:center;justify-content:center;font-size:13px;color:var(--ts);font-weight:700;writing-mode:vertical-rl;letter-spacing:2px}
-.cmp h3{font-size:18px;font-weight:800;margin-bottom:6px;display:flex;align-items:center;gap:9px}
-.cmp h3 svg{width:22px;height:22px}
-.cmp .tag{display:inline-block;font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;margin-bottom:14px}
-.cmp ul{list-style:none;margin-top:10px}
-.cmp li{padding:9px 0;font-size:13.5px;line-height:1.6;color:var(--ts);border-bottom:1px dashed var(--border);display:flex;gap:8px}
-.cmp li svg{width:16px;height:16px;flex-shrink:0;margin-top:2px}
-.ctrl{padding:30px}
-.ctrl .row{display:flex;align-items:center;justify-content:space-between;gap:18px;padding:16px 0;border-bottom:1px solid var(--border)}
-body.light .ctrl .row{border-color:var(--border-l)}
-.ctrl .row:last-child{border-bottom:none}
-.ctrl-head{display:flex;align-items:center;gap:9px;margin:4px 0 2px;padding-top:20px;border-top:1px solid var(--border);font-size:12px;font-weight:800;letter-spacing:.6px;color:var(--cyan);text-transform:uppercase}
-body.light .ctrl-head{border-top-color:var(--border-l)}
-.ctrl-head:first-of-type{border-top:none;padding-top:0}
-.ctrl-head svg{width:16px;height:16px}
-.ctrl label{font-size:14px;font-weight:600}
-.ctrl .hint{font-size:12px;color:var(--tm);margin-top:3px}
-.ctrl input[type=number]{width:90px;background:rgba(255,255,255,.06);border:1px solid var(--border);color:var(--tp);border-radius:9px;padding:8px 10px;font-size:14px;font-family:inherit}
-body.light .ctrl input[type=number]{background:rgba(0,0,0,.04);border-color:var(--border-l);color:var(--tp-l)}
-.seg{display:inline-flex;background:rgba(255,255,255,.05);border:1px solid var(--border);border-radius:11px;padding:4px}
-body.light .seg{background:rgba(0,0,0,.04)}
-.seg button{border:none;background:transparent;color:var(--ts);font-size:13px;font-weight:600;padding:8px 16px;border-radius:8px;cursor:none;font-family:inherit;transition:.3s}
+.g3{grid-template-columns:repeat(3,1fr)}
+.g4{grid-template-columns:repeat(4,1fr)}
+.g2{grid-template-columns:repeat(2,1fr)}
+.card{padding:22px;border-radius:16px}
+.card .ic,.di{width:42px;height:42px;border-radius:12px;background:var(--grad);display:flex;align-items:center;justify-content:center;margin-bottom:14px;flex-shrink:0}
+.card h3{font-size:16px;font-weight:600;margin-bottom:8px}
+.card p{color:var(--tm);font-size:13.5px}
+.card .num{position:absolute;right:18px;top:14px;font-size:30px;font-weight:800;color:var(--bd)}
+.card{position:relative;overflow:hidden}
+/* console */
+.ctrl{padding:22px;margin-bottom:22px}
+.ctrl-head{font-size:12px;font-weight:600;letter-spacing:.5px;color:var(--tm);text-transform:uppercase;margin:18px 0 12px;padding-bottom:8px;border-bottom:1px solid var(--bd)}
+.ctrl-head:first-child{margin-top:0}
+.row{display:flex;gap:22px;align-items:flex-start;padding:10px 0;border-bottom:1px dashed var(--bd)}
+.row:last-child{border-bottom:none}
+.row>div{flex:1}
+label{font-size:13.5px;font-weight:500;display:block;margin-bottom:6px}
+.hint{font-size:12px;color:var(--td);margin-top:4px}
+input[type=number],input[type=text],textarea,select{width:100%;padding:10px 12px;border-radius:10px;border:1px solid var(--bd);background:rgba(0,0,0,.2);color:var(--tp);font-size:13.5px;font-family:inherit}
+body.light input,body.light textarea,body.light select{background:#fff}
+textarea{resize:vertical;min-height:80px}
+.seg{display:inline-flex;border:1px solid var(--bd);border-radius:10px;overflow:hidden}
+.seg button{padding:8px 14px;border:none;background:transparent;color:var(--tm);font-size:13px;cursor:pointer}
 .seg button.on{background:var(--grad);color:#fff}
-.sliders{margin-top:14px;display:none;flex-direction:column;gap:12px}
-.sliders.show{display:flex}
-.sliders .sl{display:grid;grid-template-columns:96px 1fr 48px;align-items:center;gap:12px;font-size:13px}
-.sliders .sl input[type=range]{width:100%;accent-color:var(--purple)}
-.sliders .sl b{text-align:right;font-variant-numeric:tabular-nums;color:var(--cyan)}
-.sum-line{margin-top:12px;font-size:12px;color:var(--tm)}
-textarea{width:100%;min-height:96px;background:rgba(255,255,255,.05);border:1px solid var(--border);border-radius:12px;color:var(--tp);padding:12px;font-family:ui-monospace,monospace;font-size:12px;resize:vertical}
-body.light textarea{background:rgba(0,0,0,.04);border-color:var(--border-l);color:var(--tp-l)}
-.btn{padding:13px 28px;border-radius:13px;font-size:15px;font-weight:700;cursor:none;border:none;transition:all .4s var(--ease);position:relative;overflow:hidden;font-family:inherit}
-.btn::before{content:'';position:absolute;inset:0;background:linear-gradient(45deg,transparent 30%,rgba(255,255,255,.3) 50%,transparent 70%);transform:translateX(-100%);transition:transform .6s}
-.btn:hover::before{transform:translateX(100%)}
-.btn-primary{background:var(--grad);color:#fff;box-shadow:0 8px 24px rgba(0,212,255,.3)}
-.btn-primary:hover{transform:translateY(-3px) scale(1.03);box-shadow:0 16px 40px rgba(0,212,255,.4)}
-.btn-primary:disabled{opacity:.55;cursor:none;transform:none;box-shadow:none}
-.btn-sec{background:transparent;border:1.5px solid rgba(0,212,255,.4);color:var(--cyan)}
-.btn-sec:hover{background:rgba(0,212,255,.1);transform:translateY(-3px)}
-.genbar-wrap{margin-top:20px;display:none}
-.genbar-wrap.show{display:block}
-.genbar-top{display:flex;justify-content:space-between;font-size:13px;color:var(--ts);margin-bottom:8px}
-.genbar{height:9px;background:rgba(255,255,255,.08);border-radius:20px;overflow:hidden}
-body.light .genbar{background:rgba(0,0,0,.07)}
-.genbar i{display:block;height:100%;width:0;background:var(--grad);border-radius:20px;transition:width .12s linear}
-.stats{display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin-bottom:22px}
-.stat{padding:20px 18px}
-.stat .l{font-size:12.5px;color:var(--ts);margin-bottom:8px;display:flex;align-items:center;gap:7px}
-.stat .l svg{width:16px;height:16px}
-.stat .v{font-size:28px;font-weight:850;background:var(--grad);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;font-variant-numeric:tabular-nums;line-height:1}
-.distbar{display:flex;height:30px;border-radius:9px;overflow:hidden;margin:6px 0 4px;border:1px solid var(--border)}
-body.light .distbar{border-color:var(--border-l)}
-.distbar span{height:100%;display:flex;align-items:center;justify-content:center;font-size:11px;color:#06121f;font-weight:700;overflow:hidden;white-space:nowrap}
-.filters{display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-bottom:18px}
-.filters select,.filters input[type=text]{background:rgba(255,255,255,.05);border:1px solid var(--border);color:var(--tp);border-radius:10px;padding:9px 12px;font-size:13px;font-family:inherit}
-body.light .filters select,body.light .filters input[type=text]{background:rgba(0,0,0,.04);border-color:var(--border-l);color:var(--tp-l)}
-.ugrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(310px,1fr));gap:16px}
-.ucard{padding:18px;display:flex;flex-direction:column;gap:12px}
-.ucard .uh{display:flex;align-items:center;justify-content:space-between;gap:10px}
-.ucard .who{display:flex;align-items:center;gap:10px}
-.ucard .av{width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;color:#06121f;font-weight:800;font-size:14px}
-.ucard .nm{font-size:14px;font-weight:750}
-.ucard .sb{font-size:11px;color:var(--ts)}
-.badges{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
-.badge{font-size:10.5px;font-weight:700;padding:3px 9px;border-radius:20px;white-space:nowrap}
-.b-ext{background:rgba(168,85,247,.18);color:#d8b4fe;border:1px solid rgba(168,85,247,.4)}
-.b-kol{background:rgba(255,107,157,.18);color:#fbb6ce;border:1px solid rgba(255,107,157,.4)}
-.b-band{background:rgba(0,212,255,.14);color:#7fe3ff;border:1px solid rgba(0,212,255,.35)}
-.layer{border-radius:12px;padding:12px 13px}
-.layer .lh{font-size:11px;font-weight:750;margin-bottom:8px;display:flex;align-items:center;gap:6px}
-.layer .lh svg{width:14px;height:14px}
-.layer.g{background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.35)}
-.layer.g .lh{color:#6ee7b7}
-.layer.a{background:rgba(251,191,36,.09);border:1px solid rgba(251,191,36,.32)}
-.layer.a .lh{color:#fcd34d}
-.layer .voice{font-size:13px;line-height:1.6;color:var(--tp);font-style:italic;margin-bottom:9px}
-.voice-en{font-size:11.5px;line-height:1.5;color:var(--ts);opacity:.78;margin:-4px 0 9px;padding-left:10px;border-left:2px solid var(--border)}
-body.light .voice-en{border-left-color:var(--border-l)}
-.demobanner{display:flex;gap:14px;align-items:flex-start;margin-top:22px;padding:16px 18px;border:1px solid rgba(0,212,255,.28);background:linear-gradient(135deg,rgba(0,212,255,.07),rgba(168,85,247,.07))}
-.demobanner .di{flex:0 0 auto;width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;background:var(--grad);color:#fff}
-.demobanner .di .ic-svg{width:18px;height:18px}
-.demobanner div:last-child{font-size:13px;line-height:1.6;color:var(--tp)}
-.demobanner b{color:var(--cyan)}
-.layer .kv{font-size:12px;line-height:1.55;color:var(--ts);margin:3px 0}
-.layer .kv b{color:var(--tp);font-weight:650}
-.conf{font-size:10px;font-weight:700;padding:1px 7px;border-radius:10px;margin-left:6px}
-.conf-m{background:rgba(251,191,36,.18);color:#fcd34d}
-.conf-l{background:rgba(239,68,68,.16);color:#fca5a5}
-.empty{text-align:center;padding:60px 20px;color:var(--ts)}
-.empty svg{width:54px;height:54px;opacity:.4;margin-bottom:14px}
-.scen{padding:26px;margin-top:30px}
-.scen .srow{display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin:14px 0}
-.scen select,.scen input[type=text]{background:rgba(255,255,255,.05);border:1px solid var(--border);color:var(--tp);border-radius:10px;padding:10px 13px;font-size:14px;font-family:inherit;flex:1;min-width:200px}
-body.light .scen select,body.light .scen input[type=text]{background:rgba(0,0,0,.04);border-color:var(--border-l);color:var(--tp-l)}
-.agg{display:flex;height:34px;border-radius:10px;overflow:hidden;margin:16px 0;border:1px solid var(--border)}
-body.light .agg{border-color:var(--border-l)}
-.agg span{display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#06121f}
-.agg .sup{background:#34d399}.agg .neu{background:#fbbf24}.agg .opp{background:#f87171}
-.concerns{margin-top:8px}
-.concerns .cc{padding:11px 13px;border-radius:11px;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.25);margin-bottom:9px;font-size:13px;line-height:1.55}
-.concerns .cc b{color:#fca5a5}
-.note{font-size:12px;color:var(--tm);margin-top:10px;line-height:1.6}
-.foot{margin-top:80px;text-align:center;font-size:12.5px;color:var(--tm);line-height:1.7}
-.nav-pg.on{background:var(--grad);color:#fff;border-color:transparent}
-@media(max-width:980px){.cols-4{grid-template-columns:repeat(2,1fr)}.cols-3{grid-template-columns:1fr}.stats{grid-template-columns:repeat(2,1fr)}.cmp{grid-template-columns:1fr}.cmp .mid{writing-mode:horizontal-tb}}
+.sliders{display:none;margin-top:10px}
+.sliders.show{display:block}
+.sliders>div{display:flex;align-items:center;gap:12px;margin:8px 0;font-size:13px}
+.sliders input[type=range]{flex:1}
+.sliders b{width:34px;text-align:right;color:var(--tp)}
+#sumLine{font-size:12px;color:var(--td);margin-top:6px}
+/* gen progress */
+.gen-wrap{display:none;margin:18px 0;align-items:center;gap:14px}
+.gen-bar{flex:1;height:8px;border-radius:6px;background:rgba(255,255,255,.08);overflow:hidden}
+.gen-bar span{display:block;height:100%;width:0;background:var(--grad);transition:width .1s}
+.gen-wrap span{font-size:13px;color:var(--tm)}
+/* output tabs */
+.out-tabs{display:flex;gap:8px;margin:24px 0 18px}
+.out-tab{padding:10px 20px;border-radius:11px;border:1px solid var(--bd);background:var(--glass);color:var(--tm);font-size:14px;font-weight:500;cursor:pointer}
+.out-tab.on{background:var(--grad);color:#fff;border:none}
+/* list tools */
+.stats{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:16px}
+.stat{padding:14px;border-radius:13px;text-align:center}
+.stat .l{font-size:12px;color:var(--tm);display:flex;align-items:center;justify-content:center;gap:6px}
+.stat .v{font-size:26px;font-weight:700;margin-top:4px}
+.filters{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;margin-bottom:20px}
+.filters>div{display:flex;flex-direction:column;gap:5px}
+.filters select,.filters input{width:auto;min-width:140px}
+.filters .chk{display:flex;align-items:center;gap:7px;padding:10px 0;font-size:13.5px;color:var(--tm)}
+.filters .count{margin-left:auto;font-size:13px;color:var(--td);align-self:center}
+/* user grid + card */
+.ugrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:16px}
+.ucard{padding:18px;border-radius:15px;display:flex;flex-direction:column;gap:12px}
+.uh{display:flex;align-items:center;gap:12px}
+.who{display:flex;align-items:center;gap:11px;flex:1;min-width:0}
+.av{width:40px;height:40px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-weight:700;color:#fff;font-size:17px;flex-shrink:0}
+.nm{font-size:14.5px;font-weight:600}
+.sb{font-size:11.5px;color:var(--td)}
+.badges{display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end}
+.badge{font-size:10.5px;padding:3px 8px;border-radius:7px;font-weight:600}
+.b-ext{background:rgba(255,107,157,.18);color:#ff9ec4}
+.b-kol{background:rgba(0,212,255,.18);color:#7fdcff}
+.b-band{background:rgba(255,255,255,.1);color:var(--tm)}
+.layer{padding:11px 13px;border-radius:11px;background:rgba(0,0,0,.16)}
+body.light .layer{background:rgba(20,30,60,.04)}
+.lh{font-size:11.5px;font-weight:600;color:var(--tm);display:flex;align-items:center;gap:7px;margin-bottom:8px}
+.voice{font-size:13px;line-height:1.6;color:var(--tp);font-style:italic}
+.voice-en{font-size:11.5px;color:var(--td);margin-top:5px;font-style:italic}
+.kv{font-size:12px;color:var(--tm);margin-top:7px;display:flex;flex-wrap:wrap;gap:4px 8px}
+.kv b{color:var(--tp);font-weight:600}
+.tags{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px}
+.tag{font-size:11px;padding:2px 8px;border-radius:6px;background:rgba(255,107,107,.13);color:#ff9b9b}
+.tag.need{background:rgba(61,220,151,.13);color:#7be8b8}
+.tag.prof{background:rgba(125,184,255,.13);color:#9cc8ff}
+.tag.scen{background:rgba(168,85,247,.13);color:#d2a8ff}
+.conf{font-size:10.5px;padding:2px 7px;border-radius:6px;margin-left:6px}
+.conf-m{background:rgba(255,180,84,.16);color:#ffce95}
+.conf-l{background:rgba(255,255,255,.08);color:var(--td)}
+/* stress result on card */
+.stress{margin-top:4px;padding:11px 13px;border-radius:11px;border:1px solid var(--bd);background:rgba(255,255,255,.03)}
+.stress .st{font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.st .pill{padding:2px 10px;border-radius:7px;font-size:12px}
+.pill.sup{background:rgba(61,220,151,.2);color:#7be8b8}
+.pill.neu{background:rgba(255,180,84,.2);color:#ffce95}
+.pill.opp{background:rgba(255,107,107,.2);color:#ff9b9b}
+.st .rel{font-size:11px;color:var(--td);margin-left:auto}
+.drivers{font-size:11.5px;color:var(--tm);margin-top:7px;line-height:1.55}
+.drivers b{color:var(--tp)}
+/* dashboard */
+.scen-panel{padding:20px;margin-bottom:22px}
+.scen-panel .row{display:flex;gap:14px;align-items:flex-end;flex-wrap:wrap;border:none;padding:0}
+.dash-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:18px}
+.panel{padding:20px;border-radius:15px}
+.panel h4{font-size:14px;font-weight:600;margin-bottom:14px;display:flex;align-items:center;gap:8px}
+.agg-bar{display:flex;height:34px;border-radius:9px;overflow:hidden;margin:8px 0 6px;font-size:12px;font-weight:600}
+.agg-bar span{display:flex;align-items:center;justify-content:center;color:#0a0c14;min-width:30px}
+.agg-bar .sup{background:var(--green)}.agg-bar .neu{background:var(--amber)}.agg-bar .opp{background:var(--red)}
+.dist-row{display:flex;align-items:center;gap:10px;margin:9px 0;font-size:13px}
+.dist-row .lab{width:120px;color:var(--tm);flex-shrink:0}
+.dist-row .bar{flex:1;height:18px;border-radius:6px;background:rgba(255,255,255,.06);overflow:hidden}
+.dist-row .bar i{display:block;height:100%;border-radius:6px}
+.dist-row .val{width:54px;text-align:right;color:var(--tp)}
+.matrix{width:100%;border-collapse:collapse;font-size:12.5px}
+.matrix th,.matrix td{padding:8px 6px;text-align:center;border-bottom:1px solid var(--bd)}
+.matrix th{color:var(--tm);font-weight:500}
+.matrix td:first-child{text-align:left;color:var(--tm)}
+.risk-item{display:flex;align-items:flex-start;gap:10px;padding:11px 0;border-bottom:1px dashed var(--bd)}
+.risk-item:last-child{border:none}
+.risk-item .ri-av{width:32px;height:32px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-weight:700;color:#fff;font-size:14px;flex-shrink:0}
+.risk-item .ri-body{flex:1;min-width:0}
+.risk-item .ri-name{font-size:13px;font-weight:600}
+.risk-item .ri-why{font-size:11.5px;color:var(--tm);margin-top:3px}
+.risk-item .ri-flag{font-size:10.5px;padding:2px 8px;border-radius:6px;background:rgba(255,107,107,.18);color:#ff9b9b;white-space:nowrap}
+.note{font-size:13px;color:var(--tm);padding:12px 0}
+.empty{text-align:center;color:var(--td);padding:50px 0;font-size:14px}
+/* principle page */
+.principle-hero{padding:48px 0 20px}
+.principle-hero h1{font-size:32px;font-weight:700;margin-bottom:10px}
+.principle-hero p{color:var(--tm);max-width:760px;font-size:15px}
+.principle-block{padding:24px 0}
+.principle-block h2{font-size:21px;font-weight:700;margin-bottom:10px;display:flex;align-items:center;gap:10px}
+.principle-block p{color:var(--tm);font-size:14px;margin-bottom:12px;max-width:820px}
+.diagram{margin:18px 0;border-radius:14px;border:1px solid var(--bd);overflow:hidden;background:rgba(255,255,255,.02)}
+.formula{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px;background:rgba(0,0,0,.25);padding:12px 14px;border-radius:10px;color:#a8d8ff;margin:10px 0;overflow-x:auto}
+body.light .formula{background:rgba(20,30,60,.05)}
+/* visualizer compat */
+.th{font-size:14px;font-weight:500}.ts{font-size:13px;font-weight:400}
+footer{padding:40px 0;text-align:center;color:var(--td);font-size:12.5px;border-top:1px solid var(--bd);margin-top:40px}
+@media(max-width:860px){.g3,.g4,.g2,.dash-grid,.stats{grid-template-columns:1fr}.nav-links{display:none}}
 </style>
 </head>
-<body class="dark">
-<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+<body>
+<!-- ===== SVG SPRITE ===== -->
+<svg style="display:none" xmlns="http://www.w3.org/2000/svg">
   <defs>
     <linearGradient id="uiGrad" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#00d4ff"/>
-      <stop offset=".5" stop-color="#a855f7"/>
-      <stop offset="1" stop-color="#ff6b9d"/>
+      <stop offset="0" stop-color="#00d4ff"/><stop offset=".55" stop-color="#a855f7"/><stop offset="1" stop-color="#ff6b9d"/>
     </linearGradient>
   </defs>
-  <symbol id="i-users" viewBox="0 0 24 24" fill="none" stroke="url(#uiGrad)" stroke-width="2"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 19c0-3 2.5-5 5.5-5s5.5 2 5.5 5"/><path d="M15.5 5.2a3.2 3.2 0 0 1 0 5.6"/><path d="M17 19c0-2.3-1.2-4.2-3-5"/></symbol>
-  <symbol id="i-sliders" viewBox="0 0 24 24" fill="none" stroke="url(#uiGrad)" stroke-width="2"><line x1="4" y1="8" x2="20" y2="8"/><circle cx="9" cy="8" r="2.4"/><line x1="4" y1="16" x2="20" y2="16"/><circle cx="15" cy="16" r="2.4"/></symbol>
-  <symbol id="i-zap" viewBox="0 0 24 24" fill="none" stroke="url(#uiGrad)" stroke-width="2"><polygon points="13 2 4 14 11 14 11 22 20 10 13 10 13 2"/></symbol>
-  <symbol id="i-layers" viewBox="0 0 24 24" fill="none" stroke="url(#uiGrad)" stroke-width="2"><path d="M12 3 3 8l9 5 9-5z"/><path d="M3 13l9 5 9-5"/></symbol>
-  <symbol id="i-compass" viewBox="0 0 24 24" fill="none" stroke="url(#uiGrad)" stroke-width="2"><circle cx="12" cy="12" r="9"/><polygon points="15.5 8.5 11 11 8.5 15.5 13 13"/></symbol>
-  <symbol id="i-book" viewBox="0 0 24 24" fill="none" stroke="url(#uiGrad)" stroke-width="2"><path d="M4 5a2 2 0 0 1 2-2h12v18H6a2 2 0 0 0-2 2z"/><path d="M4 19a2 2 0 0 1 2-2h12"/></symbol>
-  <symbol id="i-flask" viewBox="0 0 24 24" fill="none" stroke="url(#uiGrad)" stroke-width="2"><path d="M9 3h6M10 3v6l-5 9a2 2 0 0 0 2 3h10a2 2 0 0 0 2-3l-5-9V3"/><path d="M7.5 15h9"/></symbol>
-  <symbol id="i-target" viewBox="0 0 24 24" fill="none" stroke="url(#uiGrad)" stroke-width="2"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.6" fill="url(#uiGrad)"/></symbol>
-  <symbol id="i-alert" viewBox="0 0 24 24" fill="none" stroke="url(#uiGrad)" stroke-width="2"><path d="M12 3 2 20h20z"/><path d="M12 9v5M12 17h.01"/></symbol>
-  <symbol id="i-bar" viewBox="0 0 24 24" fill="none" stroke="url(#uiGrad)" stroke-width="2"><path d="M4 20h16"/><rect x="6" y="11" width="3" height="9" rx="1"/><rect x="11" y="6" width="3" height="14" rx="1"/><rect x="16" y="14" width="3" height="6" rx="1"/></symbol>
-  <symbol id="i-doc" viewBox="0 0 24 24" fill="none" stroke="url(#uiGrad)" stroke-width="2"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M9 13h6M9 17h4"/></symbol>
-  <symbol id="i-link" viewBox="0 0 24 24" fill="none" stroke="url(#uiGrad)" stroke-width="2"><path d="M9 13a5 5 0 0 0 7 0l2-2a5 5 0 0 0-7-7l-1 1"/><path d="M15 11a5 5 0 0 0-7 0l-2 2a5 5 0 0 0 7 7l1-1"/></symbol>
-  <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="url(#uiGrad)" stroke-width="2"><path d="M20 6 9 17l-5-5"/></symbol>
-  <symbol id="i-sun" viewBox="0 0 24 24" fill="none" stroke="url(#uiGrad)" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M19.1 4.9l-1.4 1.4M6.3 17.7l-1.4 1.4"/></symbol>
-  <symbol id="i-moon" viewBox="0 0 24 24" fill="none" stroke="url(#uiGrad)" stroke-width="2"><path d="M21 12.8A8.5 8.5 0 1 1 11.2 3 6.6 6.6 0 0 0 21 12.8z"/></symbol>
-  <symbol id="w-fish" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M2 12c2.5-4 8-6 13-6 1.8 0 3.5.6 5 1.6L22 8v8l-2-1.6c-1.5 1-3.2 1.6-5 1.6-5 0-10.5-2-13-6z"/><circle cx="14" cy="11" r="1" fill="#1a1030"/></symbol>
+  <!-- gradient-stroke icons (on transparent/glass) -->
+  <symbol id="i-doc" viewBox="0 0 24 24" fill="none" stroke="url(#uiGrad)" stroke-width="2"><path d="M7 3h7l4 4v14H7z"/><path d="M14 3v4h4M9.5 12h5M9.5 15.5h5"/></symbol>
+  <symbol id="i-sliders" viewBox="0 0 24 24" fill="none" stroke="url(#uiGrad)" stroke-width="2"><path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2.2"/><circle cx="8" cy="17" r="2.2"/></symbol>
+  <symbol id="i-layers" viewBox="0 0 24 24" fill="none" stroke="url(#uiGrad)" stroke-width="2"><path d="M12 3l9 5-9 5-9-5 9-5z"/><path d="M3 13l9 5 9-5"/></symbol>
+  <symbol id="i-flask" viewBox="0 0 24 24" fill="none" stroke="url(#uiGrad)" stroke-width="2"><path d="M10 3h4M10.5 3v6l-5 9a2 2 0 0 0 1.8 3h11.4a2 2 0 0 0 1.8-3l-5-9V3"/><path d="M7.5 15h9"/></symbol>
+  <symbol id="i-bar" viewBox="0 0 24 24" fill="none" stroke="url(#uiGrad)" stroke-width="2"><path d="M5 20V10M12 20V4M19 20v-7"/></symbol>
+  <symbol id="i-target" viewBox="0 0 24 24" fill="none" stroke="url(#uiGrad)" stroke-width="2"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="1"/></symbol>
+  <symbol id="i-zap" viewBox="0 0 24 24" fill="none" stroke="url(#uiGrad)" stroke-width="2"><path d="M13 2L4 14h7l-1 8 9-12h-7l1-8z"/></symbol>
+  <symbol id="i-users" viewBox="0 0 24 24" fill="none" stroke="url(#uiGrad)" stroke-width="2"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 19a5.5 5.5 0 0 1 11 0M16 6.5a3 3 0 0 1 0 5.6M17 19a5.5 5.5 0 0 0-3-4.9"/></symbol>
+  <symbol id="i-link" viewBox="0 0 24 24" fill="none" stroke="url(#uiGrad)" stroke-width="2"><path d="M10 14a3.5 3.5 0 0 0 5 0l2.5-2.5a3.5 3.5 0 0 0-5-5L12 8"/><path d="M14 10a3.5 3.5 0 0 0-5 0L6.5 12.5a3.5 3.5 0 0 0 5 5L12 16"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24" fill="none" stroke="url(#uiGrad)" stroke-width="2"><path d="M12 3l9 16H3z"/><path d="M12 10v4M12 17h.01"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="url(#uiGrad)" stroke-width="2"><path d="M5 12l4 4 10-10"/></symbol>
+  <symbol id="i-compass" viewBox="0 0 24 24" fill="none" stroke="url(#uiGrad)" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M15.5 8.5l-2 5-5 2 2-5z"/></symbol>
+  <symbol id="i-book" viewBox="0 0 24 24" fill="none" stroke="url(#uiGrad)" stroke-width="2"><path d="M4 5a2 2 0 0 1 2-2h5v16H6a2 2 0 0 0-2 2zM20 5a2 2 0 0 0-2-2h-5v16h5a2 2 0 0 1 2 2z"/></symbol>
+  <symbol id="i-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4.5"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.5 1.5M17.5 17.5L19 19M19 5l-1.5 1.5M6.5 17.5L5 19"/></symbol>
+  <symbol id="i-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 13a8 8 0 1 1-9-9 6.5 6.5 0 0 0 9 9z"/></symbol>
+  <symbol id="i-chart" viewBox="0 0 24 24" fill="none" stroke="url(#uiGrad)" stroke-width="2"><path d="M4 4v16h16"/><path d="M8 14l3-4 3 3 4-6"/></symbol>
+  <symbol id="i-grid" viewBox="0 0 24 24" fill="none" stroke="url(#uiGrad)" stroke-width="2"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></symbol>
+  <symbol id="i-filter" viewBox="0 0 24 24" fill="none" stroke="url(#uiGrad)" stroke-width="2"><path d="M4 5h16l-6 8v5l-4 2v-7z"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24" fill="none" stroke="url(#uiGrad)" stroke-width="2"><circle cx="11" cy="11" r="6.5"/><path d="M20 20l-3.5-3.5"/></symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24" fill="none" stroke="url(#uiGrad)" stroke-width="2"><path d="M12 3l8 3v6c0 4.5-3.2 7.5-8 9-4.8-1.5-8-4.5-8-9V6z"/></symbol>
+  <!-- white icons (on gradient boxes) -->
+  <symbol id="w-doc" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 3h7l4 4v14H7z"/><path d="M14 3v4h4M9.5 12h5M9.5 15.5h5"/></symbol>
+  <symbol id="w-sliders" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2.2"/><circle cx="8" cy="17" r="2.2"/></symbol>
+  <symbol id="w-layers" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l9 5-9 5-9-5 9-5z"/><path d="M3 13l9 5 9-5"/></symbol>
+  <symbol id="w-bar" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 20V10M12 20V4M19 20v-7"/></symbol>
+  <symbol id="w-target" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="1"/></symbol>
+  <symbol id="w-zap" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L4 14h7l-1 8 9-12h-7l1-8z"/></symbol>
+  <symbol id="w-users" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 19a5.5 5.5 0 0 1 11 0M16 6.5a3 3 0 0 1 0 5.6M17 19a5.5 5.5 0 0 0-3-4.9"/></symbol>
+  <symbol id="w-link" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 14a3.5 3.5 0 0 0 5 0l2.5-2.5a3.5 3.5 0 0 0-5-5L12 8"/><path d="M14 10a3.5 3.5 0 0 0-5 0L6.5 12.5a3.5 3.5 0 0 0 5 5L12 16"/></symbol>
+  <symbol id="w-alert" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l9 16H3z"/><path d="M12 10v4M12 17h.01"/></symbol>
+  <symbol id="w-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12l4 4 10-10"/></symbol>
+  <symbol id="w-compass" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M15.5 8.5l-2 5-5 2 2-5z"/></symbol>
+  <symbol id="w-book" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 5a2 2 0 0 1 2-2h5v16H6a2 2 0 0 0-2 2zM20 5a2 2 0 0 0-2-2h-5v16h5a2 2 0 0 1 2 2z"/></symbol>
+  <symbol id="w-chart" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4v16h16"/><path d="M8 14l3-4 3 3 4-6"/></symbol>
+  <symbol id="w-grid" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></symbol>
+  <symbol id="w-filter" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 5h16l-6 8v5l-4 2v-7z"/></symbol>
+  <symbol id="w-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="6.5"/><path d="M20 20l-3.5-3.5"/></symbol>
+  <symbol id="w-shield" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l8 3v6c0 4.5-3.2 7.5-8 9-4.8-1.5-8-4.5-8-9V6z"/></symbol>
   <symbol id="w-flask" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 3h4M10.5 3v6l-5 9a2 2 0 0 0 1.8 3h11.4a2 2 0 0 0 1.8-3l-5-9V3"/><path d="M7.5 15h9"/></symbol>
-  <!-- 白色图标（currentColor）：放在渐变底色方块上的卡/特性/品牌图标 -->
-  <symbol id="w-doc" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M9 13h6M9 17h4"/></symbol>
-  <symbol id="w-sliders" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="8" x2="20" y2="8"/><circle cx="9" cy="8" r="2.4"/><line x1="4" y1="16" x2="20" y2="16"/><circle cx="15" cy="16" r="2.4"/></symbol>
-  <symbol id="w-layers" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3 3 8l9 5 9-5z"/><path d="M3 13l9 5 9-5"/></symbol>
-  <symbol id="w-bar" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 20h16"/><rect x="6" y="11" width="3" height="9" rx="1"/><rect x="11" y="6" width="3" height="14" rx="1"/><rect x="16" y="14" width="3" height="6" rx="1"/></symbol>
-  <symbol id="w-target" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.6" fill="currentColor"/></symbol>
-  <symbol id="w-zap" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 4 14 11 14 11 22 20 10 13 10 13 2"/></symbol>
-  <symbol id="w-users" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 19c0-3 2.5-5 5.5-5s5.5 2 5.5 5"/><path d="M15.5 5.2a3.2 3.2 0 0 1 0 5.6"/><path d="M17 19c0-2.3-1.2-4.2-3-5"/></symbol>
-  <symbol id="w-link" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 13a5 5 0 0 0 7 0l2-2a5 5 0 0 0-7-7l-1 1"/><path d="M15 11a5 5 0 0 0-7 0l-2 2a5 5 0 0 0 7 7l1-1"/></symbol>
-  <symbol id="w-alert" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3 2 20h20z"/><path d="M12 9v5M12 17h.01"/></symbol>
-  <symbol id="w-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6 9 17l-5-5"/></symbol>
-  <symbol id="w-compass" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><polygon points="15.5 8.5 11 11 8.5 15.5 13 13"/></symbol>
-  <symbol id="w-book" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 5a2 2 0 0 1 2-2h12v18H6a2 2 0 0 0-2 2z"/><path d="M4 19a2 2 0 0 1 2-2h12"/></symbol>
 </svg>
-<div class="cur" id="cur"></div>
-<div class="cur-glow" id="curGlow"></div>
 
-<nav class="navbar">
-  <div class="brand"><div class="brand-logo"><svg class="ic-svg"><use href="#w-fish"/></svg></div>虚拟用户压力测试</div>
-  <div class="nav-right">
+<!-- ===== NAV ===== -->
+<nav>
+  <div class="brand"><div class="logo"><svg class="ic-svg" style="width:18px;height:18px;color:#fff"><use href="#w-flask"/></svg></div>虚拟用户压力测试</div>
+  <div class="nav-links">
     <a class="nav-link nav-pg on" data-page="console" href="#">工作台</a>
     <a class="nav-link nav-pg" data-page="intro" href="#">介绍</a>
+    <a class="nav-link nav-pg" data-page="principle" href="#">运行原理</a>
     <a class="nav-link" href="https://ffswwwda.github.io/user-research-console/" target="_blank" rel="noopener">预测世界</a>
-    <button class="theme-toggle" id="themeBtn" aria-label="切换主题"><svg class="ic-svg"><use href="#i-sun"/></svg></button>
   </div>
+  <button id="themeBtn" title="切换主题"><svg class="ic-svg" style="width:18px;height:18px"><use href="#i-sun"/></svg></button>
 </nav>
 
-<div class="wrap">
-  <section class="page" id="page-intro" style="display:none">
-  <section class="hero">
-    <h1>在上市之前，先让<span class="g"> 100 个虚拟用户</span><br>替你把产品 / 内容试一遍</h1>
-    <p>基于你真实的 VOC 数据源头，用成熟的理论分布生成一群「会说、会做、会想」的虚拟用户，再丢进社媒传播、新品上架等场景里做压力测试——上市前就发现极端反应、被拒风险与沉默的大多数。</p>
-    <div class="cta">
-      <button class="btn btn-primary" onclick="showPage('console')"><svg class="ic-svg" style="width:18px;height:18px;margin-right:8px;vertical-align:-3px"><use href="#i-zap"/></svg>开始生成虚拟用户</button>
-      <a class="btn btn-sec" href="#logic">了解我们的逻辑</a>
-    </div>
-    <div class="glass demobanner">
-      <div class="di"><svg class="ic-svg"><use href="#w-doc"/></svg></div>
-      <div><b>内置真实示例数据集</b>：飞机杯·淋浴支架 真实 VOC（美亚欧亚汇总 · 3 星及以下，共 1731 条评价 / 158 个 ASIN）。源头整体偏负面，正好用来演示「上市前挑刺」压力测试。进入工作台可切换内置通用样本，或粘贴你自己的 VOC JSON 覆盖。</div>
-    </div>
-  </section>
-
-  <section class="section" id="logic">
-    <div class="sec-head">
-      <div class="kicker"><svg class="ic-svg"><use href="#i-layers"/></svg>OUR LOGIC · 我们的逻辑</div>
-      <h2>从原始数据到可压力测试的用户群</h2>
-      <p>不是随机捏人，而是「真实锚定 + 理论分布 + 双层卡片」四步闭环。每一个虚拟用户都能追到它在真实 VOC 里的出处。</p>
-    </div>
-    <div class="grid cols-4">
-      <div class="glass card"><div class="ic"><svg class="ic-svg"><use href="#w-doc"/></svg></div><div class="num">01</div><h3>提取源头</h3><p>导入你的 VOC / 用户反馈 JSON，提取分群、原话、情绪、JTBD、痛点与需求。</p></div>
-      <div class="glass card"><div class="ic"><svg class="ic-svg"><use href="#w-sliders"/></svg></div><div class="num">02</div><h3>理论分布生成</h3><p>按 Rogers 采纳曲线 + von Hippel 领先用户 + Pareto 影响力，决定这 100 人长什么样。</p></div>
-      <div class="glass card"><div class="ic"><svg class="ic-svg"><use href="#w-layers"/></svg></div><div class="num">03</div><h3>双层用户卡</h3><p>锚定层（真实原话/分群）必须准确；生成层（私态度/动作/人口代理）带置信度，不幻觉身份。</p></div>
-      <div class="glass card"><div class="ic"><svg class="ic-svg"><use href="#w-flask"/></svg></div><div class="num">04</div><h3>场景压力测试</h3><p>把用户群丢进社媒传播 / 新品上架，看谁支持、谁反对、谁沉默，输出风险清单。</p></div>
-    </div>
-  </section>
-
-  <section class="section" id="theory">
-    <div class="sec-head">
-      <div class="kicker"><svg class="ic-svg"><use href="#i-compass"/></svg>THEORY · 理论支撑</div>
-      <h2>用户群的形态，不是拍脑袋</h2>
-      <p>「100 人里 10% 极端、50% 无所谓」背后，是四套成熟的行为科学理论。它们共同决定了生成的虚拟用户群如何分布、谁该被重点对待。</p>
-    </div>
-    <div class="grid cols-2">
-      <div class="glass card"><div class="ic"><svg class="ic-svg"><use href="#w-bar"/></svg></div><h3>Rogers 创新扩散理论</h3><p>采纳者天然呈钟形偏态五档：创新者 2.5% / 早期采纳 13.5% / 早期大众 34% / 晚期大众 34% / 落后者 16%。它决定了「这 100 人里，多少人会动」。<br><b style="color:var(--tp)">用在哪：</b>默认群体分布形态。</p></div>
-      <div class="glass card"><div class="ic"><svg class="ic-svg"><use href="#w-target"/></svg></div><h3>von Hippel 领先用户理论</h3><p>极端 / 领先用户当下的需求，往往是主流市场未来的需求。所以约 10% 的极端用户不是噪声，而是信号——他们定义产品下一步。<br><b style="color:var(--tp)">用在哪：</b>极端用户标记与需求前瞻。</p></div>
-      <div class="glass card"><div class="ic"><svg class="ic-svg"><use href="#w-zap"/></svg></div><h3>Pareto / Heavy-Half</h3><p>哪怕落后者占 16%，真正驱动传播的是前 15%+ 的领先 / 早期采纳者。因此每个用户携带「影响力权重」，不是均匀 1。<br><b style="color:var(--tp)">用在哪：</b>仿真时的带动力与聚合显著性。</p></div>
-      <div class="glass card"><div class="ic"><svg class="ic-svg"><use href="#w-users"/></svg></div><h3>Ajzen 计划行为 + 社会期望</h3><p>人「说的」和「私下想的 / 真正做的」常有 gap（say-do gap）。所以卡片分「公开声音（真实）」与「私态度（生成）」，私态度才是动作预测的依据。<br><b style="color:var(--tp)">用在哪：</b>生成层的私态度与动作倾向。</p></div>
-    </div>
-  </section>
-
-  <section class="section" id="usecase">
-    <div class="sec-head">
-      <div class="kicker"><svg class="ic-svg"><use href="#i-flask"/></svg>USE CASES · 使用场景</div>
-      <h2>什么时候该用压力测试，而不是预测</h2>
-      <p>凡是「上市 / 投放前，想先知道哪里会翻车」的时刻，都适合先跑一轮虚拟用户压力测试。</p>
-    </div>
-    <div class="grid cols-3">
-      <div class="glass card"><div class="ic"><svg class="ic-svg"><use href="#w-flask"/></svg></div><h3>新品上市前试用</h3><p>把产品卖点丢给这群虚拟用户，看极端用户会不会挑刺、价格敏感者会不会嫌贵、沉默大多数会不会无感。</p></div>
-      <div class="glass card"><div class="ic"><svg class="ic-svg"><use href="#w-users"/></svg></div><h3>社媒内容挑刺</h3><p>一条内容发出去，谁会转、谁会喷、谁划走？在真实投放前用虚拟用户群预演舆论反应。</p></div>
-      <div class="glass card"><div class="ic"><svg class="ic-svg"><use href="#w-alert"/></svg></div><h3>极端风险发现</h3><p>专门放大领先用户与差评传播者，提前暴露可能被放大的负面叙事与合规 / 舆情隐患。</p></div>
-    </div>
-  </section>
-
-  <section class="section" id="diff">
-    <div class="sec-head">
-      <div class="kicker"><svg class="ic-svg"><use href="#i-link"/></svg>VS · 与预测世界的区分</div>
-      <h2>压力测试 vs 预测世界，不是同一件事</h2>
-      <p>你的理解基本正确——一个在上市前、一个在上市后；一个看计划的脆弱点、一个看市场的演化结果。两者互补，不替代。</p>
-    </div>
-    <div class="glass cmp">
-      <div class="col">
-        <span class="tag" style="background:rgba(0,212,255,.16);color:#7fe3ff">上市前 · 试用与挑刺</span>
-        <h3><svg class="ic-svg"><use href="#i-flask"/></svg>虚拟用户压力测试</h3>
-        <ul>
-          <li><svg class="ic-svg" style="color:var(--cyan)"><use href="#i-check"/></svg>找一批虚拟用户来试用、评价、挑刺</li>
-          <li><svg class="ic-svg" style="color:var(--cyan)"><use href="#i-check"/></svg>发现极端反应、被拒风险、沉默大多数</li>
-          <li><svg class="ic-svg" style="color:var(--cyan)"><use href="#i-check"/></svg>目的是「计划的健壮性」——哪里会破</li>
-          <li><svg class="ic-svg" style="color:var(--cyan)"><use href="#i-check"/></svg>社媒同样适用：内容发出去前先预演舆论</li>
-        </ul>
-      </div>
-      <div class="mid">VS</div>
-      <div class="col">
-        <span class="tag" style="background:rgba(168,85,247,.16);color:#d8b4fe">上市后 · 演化与预测</span>
-        <h3><svg class="ic-svg"><use href="#i-target"/></svg>预测世界（用户研究预测引擎）</h3>
-        <ul>
-          <li><svg class="ic-svg" style="color:var(--purple)"><use href="#i-check"/></svg>把这群用户放进市场，看他们怎么演化</li>
-          <li><svg class="ic-svg" style="color:var(--purple)"><use href="#i-check"/></svg>预测传播 / 采纳的「结果量级」</li>
-          <li><svg class="ic-svg" style="color:var(--purple)"><use href="#i-check"/></svg>目的是「效果的预测」——会到哪</li>
-          <li><svg class="ic-svg" style="color:var(--purple)"><use href="#i-check"/></svg>多智能体仿真 + 公式模型双引擎</li>
-        </ul>
+<!-- ===== PAGE: CONSOLE (default) ===== -->
+<section class="page" id="page-console">
+  <div class="wrap">
+    <div class="hero" style="padding:48px 0 24px">
+      <h1>虚拟用户压力测试</h1>
+      <p>基于真实 VOC 源头，生成可溯源的虚拟用户群，用理论驱动的匹配引擎，对你的新品概念 / 社媒内容 / 上市策略做上市前「挑刺」压力测试。</p>
+      <div class="cta">
+        <button class="btn btn-primary" onclick="document.getElementById('console').scrollIntoView({behavior:'smooth'})">开始生成虚拟用户</button>
+        <a class="btn btn-sec" href="#principle" onclick="showPage('principle')">了解运行原理</a>
       </div>
     </div>
-    <p class="note">一句话：<b style="color:var(--tp)">压力测试 = 找用户来试（看漏洞）</b>，<b style="color:var(--tp)">预测世界 = 看市场怎么跑（看结果）</b>。先用压力测试排雷，再用预测世界估量，是更稳的研发节奏。</p>
-  </section>
 
-  </section>
+    <section class="section" id="console">
+      <div class="ctrl">
+        <div class="ctrl-head">群体构成</div>
+        <div class="row">
+          <div><label>群体规模</label><div class="hint">一次生成多少张虚拟用户卡（默认 100，最多 500）</div>
+            <input type="number" id="sizeN" value="100" min="1" max="500"></div>
+          <div><label>随机种子</label><div class="hint">相同种子 + 相同参数 = 相同群体（便于对比方案）</div>
+            <input type="number" id="seedN" value="1" min="1"></div>
+        </div>
+        <div class="row">
+          <div><label>群体分布</label><div class="hint">默认 Rogers 创新扩散五档；可切到自定义滑杆</div>
+            <div class="seg" id="modeSeg">
+              <button data-m="standard" class="on">Rogers 五档</button>
+              <button data-m="custom">自定义</button>
+            </div>
+            <div class="sliders" id="sliders">
+              <div>创新者<input type="range" min="0" max="100" value="3"><b>3</b></div>
+              <div>早期采纳者<input type="range" min="0" max="100" value="14"><b>14</b></div>
+              <div>早期大众<input type="range" min="0" max="100" value="34"><b>34</b></div>
+              <div>晚期大众<input type="range" min="0" max="100" value="34"><b>34</b></div>
+              <div>落后者<input type="range" min="0" max="100" value="15"><b>15</b></div>
+              <div id="sumLine">当前合计：100 · 将按比例归一化</div>
+            </div>
+          </div>
+          <div><label>极端/领先用户占比</label><div class="hint">von Hippel 领先用户理论：约 10% 极端用户承载多数创新信号</div>
+            <input type="range" id="extremeR" min="0" max="40" value="10" style="width:100%"><span id="extremeV" style="font-size:12px;color:var(--td)">10%</span></div>
+          <div><label>影响力 Pareto 系数</label><div class="hint">Heavy-Half：少数用户贡献多数影响力</div>
+            <div class="seg" id="paretoSeg">
+              <button data-p="2">弱</button><button data-p="3" class="on">中</button><button data-p="5">强</button>
+            </div></div>
+        </div>
 
-  <section class="section" id="boundary">
-    <div class="sec-head">
-      <div class="kicker"><svg class="ic-svg"><use href="#i-alert"/></svg>BOUNDARY · 能力边界</div>
-      <h2>什么能测，什么不能，什么前置后可测</h2>
-      <p>工具诚实地划清边界：态度与需求可压力测试；真人体验不可虚拟化；但真实体验反馈可作为锚定输入被复用。这也是虚拟用户卡「锚定层真实 / 生成层带置信度」设计哲学的直接体现。</p>
-    </div>
-    <div class="grid cols-3">
-      <div class="glass card"><div class="ic" style="background:linear-gradient(135deg,#10b981,#00d4ff)"><svg class="ic-svg"><use href="#w-check"/></svg></div><h3>可直接压力测试</h3><p>新品概念测试、功能价值测试、文案 / 卖点反应。虚拟用户基于 VOC 锚定的分群、立场、需求生成反应，确定性可复算。</p></div>
-      <div class="glass card"><div class="ic" style="background:rgba(255,255,255,.12)"><svg class="ic-svg"><use href="#w-alert"/></svg></div><h3>真人体验 · 不可虚拟化</h3><p>使用手感、流畅度、情绪流、生理 / 直觉反应。必须真人真实场景，数据无法生成体感——这是工具的天花板。</p></div>
-      <div class="glass card"><div class="ic" style="background:linear-gradient(135deg,#a855f7,#ff6b9d)"><svg class="ic-svg"><use href="#w-link"/></svg></div><h3>前置真实反馈 → 可测</h3><p>把真人体验反馈描述作为输入（锚定层），虚拟用户群复用它：测普遍性、分群差异、严重度。真实反馈是锚，虚拟人是放大器。</p></div>
-    </div>
-    <p class="note">桥接点：体验不能「由虚拟人体验」，但体验反馈能「被虚拟人复用」。前置输入后，生成时可注入锚定层，让虚拟用户群放大已知体验问题的分布与影响。</p>
-  </section>
+        <div class="ctrl-head">数据源头（VOC）</div>
+        <div class="row" style="flex-direction:column;align-items:stretch;gap:10px">
+          <div><label>选择数据源</label><div class="hint">真实 VOC 是虚拟用户的「锚」——所有声音必须可溯源，不可凭空捏造</div>
+            <select id="vocSrc" style="max-width:420px">
+              <option value="demo">飞机杯·淋浴支架 真实 VOC 示例（1731 条 · 8 分群）</option>
+              <option value="builtin">内置通用样本（精简 8 分群）</option>
+            </select>
+          </div>
+          <div><label>或粘贴你自己的 VOC JSON 覆盖</label>
+            <textarea id="vocIn" placeholder='可选。格式：{"voc":[{"segment":"price","voice":"太贵了","sentiment":"负","barriers":["价格偏高"],"needs":["性价比"],"star":"2"}]}'></textarea>
+          </div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap">
+            <button class="btn btn-sec" onclick="applyVOC()">导入 VOC</button>
+            <button class="btn btn-sec" onclick="resetVOC()">重置数据源</button>
+            <span id="vocStat" style="font-size:12px;color:var(--tm);align-self:center">当前：飞机杯真实 VOC 示例</span>
+          </div>
+        </div>
 
-  <section class="page" id="page-console">
-  <section class="section" id="console">
-    <div class="sec-head">
-      <div class="kicker"><svg class="ic-svg"><use href="#i-sliders"/></svg>CONSOLE · 生成控制台</div>
-      <h2>生成你的虚拟用户群</h2>
-      <p>默认采用 Rogers 五档理论分布；也可切换「自定义」用滑杆调各档占比。生成是确定性的（带种子），同样参数得到同样的群体，方便对比不同方案。</p>
-    </div>
-    <div class="glass ctrl">
-      <div class="ctrl-head"><svg class="ic-svg"><use href="#i-users"/></svg>群体构成</div>
-      <div class="row">
-        <div><label>群体规模</label><div class="hint">一次生成多少张虚拟用户卡</div></div>
-        <input type="number" id="sizeN" value="100" min="10" max="2000" step="10">
+        <div class="ctrl-head">生成</div>
+        <button class="btn btn-primary" id="genBtn" style="padding:13px 28px;font-size:15px" onclick="generate()">生成虚拟用户群</button>
       </div>
-      <div class="row">
-        <div><label>分布模式</label><div class="hint">标准=Rogers 五档；自定义=用滑杆定各档占比</div></div>
-        <div class="seg" id="modeSeg">
-          <button class="on" data-m="standard">标准 Rogers</button>
-          <button data-m="custom">自定义</button>
+
+      <div class="gen-wrap" id="genWrap">
+        <div class="gen-bar"><span id="genBar"></span></div>
+        <span id="genPct">0%</span>
+        <span id="genTxt">准备中…</span>
+      </div>
+
+      <!-- ===== OUTPUT: two switchable pages ===== -->
+      <div id="resultArea" style="display:none">
+        <div class="out-tabs">
+          <button class="out-tab on" data-out="list">用户清单 <span id="tabListN" style="opacity:.7"></span></button>
+          <button class="out-tab" data-out="dash">数据看板</button>
+        </div>
+
+        <!-- TAB 1: 用户清单 -->
+        <div class="out-pane" id="out-list">
+          <div class="stats" id="stats"></div>
+          <div class="filters">
+            <div><label>分群</label><select id="fSeg"><option value="">全部</option></select></div>
+            <div><label>立场</label><select id="fStance"><option value="">全部</option><option value="support">支持</option><option value="neutral">中立</option><option value="oppose">反对</option></select></div>
+            <div><label>&nbsp;</label><label class="chk"><input type="checkbox" id="fExt">仅极端/领先</label></div>
+            <div><label>搜索（原话/标签）</label><input type="text" id="fSearch" placeholder="如：静音 / 价格 / 尺寸"></div>
+            <span class="count" id="fCount"></span>
+          </div>
+          <div class="ugrid" id="ugrid"></div>
+        </div>
+
+        <!-- TAB 2: 数据看板 -->
+        <div class="out-pane" id="out-dash" style="display:none">
+          <div class="glass scen-panel">
+            <div class="row">
+              <div style="flex:0 0 200px"><label>压力测试场景</label>
+                <select id="scenSel" style="width:100%">
+                  <option value="launch">新品上架</option>
+                  <option value="social">社媒内容传播</option>
+                  <option value="promo">优惠活动</option>
+                </select></div>
+              <div style="flex:1"><label>场景简述（让引擎"读懂"你的方案）</label>
+                <input type="text" id="scenBrief" placeholder="例如：60美元的飞机杯，主打静音、软硅胶材质"></div>
+              <div style="flex:0 0 auto"><button class="btn btn-primary" onclick="runStress()">运行压力测试</button></div>
+            </div>
+            <div class="note" style="padding-bottom:0">引擎会解析场景属性（价格 / 卖点 / 品类），与每位用户的真实标签做相关性匹配，算出立场与驱动因子。</div>
+          </div>
+          <div id="dashOut"><div class="empty">👆 填写场景简述后点击「运行压力测试」，生成数据看板。<br>（也可先去「用户清单」查看 100 位虚拟用户的真实身份卡）</div></div>
         </div>
       </div>
-      <div class="sliders" id="sliders">
-        <div class="sl"><span>创新者</span><input type="range" min="0" max="100" value="3" data-b="0"><b>3</b></div>
-        <div class="sl"><span>早期采纳</span><input type="range" min="0" max="100" value="14" data-b="1"><b>14</b></div>
-        <div class="sl"><span>早期大众</span><input type="range" min="0" max="100" value="34" data-b="2"><b>34</b></div>
-        <div class="sl"><span>晚期大众</span><input type="range" min="0" max="100" value="34" data-b="3"><b>34</b></div>
-        <div class="sl"><span>落后者</span><input type="range" min="0" max="100" value="16" data-b="4"><b>16</b></div>
-        <div class="sum-line" id="sumLine">当前合计：101 · 将按比例归一化</div>
-      </div>
-      <div class="row">
-        <div><label>领先 / 极端用户比例</label><div class="hint">von Hippel：标记为「极端 / 信号用户」的占比</div></div>
-        <div style="display:flex;align-items:center;gap:10px"><input type="range" id="extremeR" min="0" max="30" value="10" style="width:160px;accent-color:var(--purple)"><b id="extremeV" style="color:var(--cyan);width:34px;text-align:right">10%</b></div>
-      </div>
-      <div class="row">
-        <div><label>影响力集中度（Pareto）</label><div class="hint">少数用户带动力强弱</div></div>
-        <div class="seg" id="paretoSeg">
-          <button data-p="1">弱</button>
-          <button class="on" data-p="3">中</button>
-          <button data-p="6">强</button>
-        </div>
-      </div>
-      <div class="ctrl-head"><svg class="ic-svg"><use href="#i-doc"/></svg>数据源头（VOC）</div>
-      <div class="row" style="flex-direction:column;align-items:stretch;gap:10px">
-        <div><label>数据源头（VOC）</label><div class="hint">默认载入真实示例数据集；可切换为内置通用样本，或粘贴你自己的 VOC JSON 覆盖。示例来源为差评 / 中评源头，整体偏负面，适合演示「上市前挑刺」。</div></div>
-        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
-          <select id="vocSrc" style="flex:1;min-width:240px">
-            <option value="demo">飞机杯 VOC 示例 · 1731 条真实评价（差评源头）</option>
-            <option value="builtin">内置通用样本 · 8 分群</option>
-          </select>
-          <button class="btn btn-sec" onclick="loadSource()" style="padding:10px 18px;font-size:13px">载入数据源</button>
-          <span id="vocStat" style="font-size:12px;color:var(--tm);align-self:center">当前：示例数据集</span>
-        </div>
-        <textarea id="vocIn" placeholder='可选覆盖。例如：{"voc":[{"segment":"price","voice":"太贵了，同等功效的国产便宜一半","sentiment":"负","jtbd":"省钱","pain":"价格高","need":"性价比"}]}'></textarea>
-        <div style="display:flex;gap:10px">
-          <button class="btn btn-sec" onclick="applyVOC()" style="padding:10px 18px;font-size:13px">粘贴 JSON 覆盖</button>
-          <button class="btn btn-sec" onclick="document.getElementById('vocIn').value='';loadSource();" style="padding:10px 18px;font-size:13px">恢复当前源</button>
-        </div>
-      </div>
-      <div class="ctrl-head"><svg class="ic-svg"><use href="#i-zap"/></svg>生成</div>
-      <div class="row" style="border-bottom:none">
-        <div><label>随机种子</label><div class="hint">相同种子 + 相同参数 = 相同群体（便于对比方案）</div></div>
-        <div style="display:flex;align-items:center;gap:10px"><input type="number" id="seedN" value="20260717"><button class="btn btn-sec" onclick="document.getElementById('seedN').value=Math.floor(Math.random()*1e9)" style="padding:8px 14px;font-size:12px">随机</button></div>
-      </div>
-      <button class="btn btn-primary" id="genBtn" style="width:100%;margin-top:8px" onclick="generate()"><svg class="ic-svg" style="width:18px;height:18px;margin-right:8px;vertical-align:-3px"><use href="#i-zap"/></svg>生成虚拟用户群</button>
-      <div class="genbar-wrap" id="genWrap">
-        <div class="genbar-top"><span id="genTxt">正在生成…</span><span id="genPct">0%</span></div>
-        <div class="genbar"><i id="genBar"></i></div>
-      </div>
-    </div>
-
-    <div id="resultArea" style="margin-top:30px;display:none">
-      <div class="stats" id="stats"></div>
-      <div class="glass" style="padding:18px;margin-bottom:18px">
-        <div class="distbar" id="distBar"></div>
-        <div class="sum-line" id="distLegend" style="margin-top:8px"></div>
-      </div>
-      <div class="filters">
-        <select id="fSeg"><option value="">全部分群</option></select>
-        <label style="font-size:13px;color:var(--ts);display:flex;align-items:center;gap:6px"><input type="checkbox" id="fExt">仅看极端用户</label>
-        <input type="text" id="fSearch" placeholder="搜索原话关键词…" style="flex:1;min-width:180px">
-        <span id="fCount" style="font-size:13px;color:var(--ts)"></span>
-      </div>
-      <div class="ugrid" id="ugrid"></div>
-    </div>
-
-    <div class="glass scen" id="scenPanel" style="display:none">
-      <div class="sec-head" style="margin-bottom:6px"><div class="kicker"><svg class="ic-svg"><use href="#i-flask"/></svg>STRESS TEST · 压力测试</div><h2 style="font-size:21px">把这群用户丢进场景里</h2></div>
-      <div class="srow">
-        <select id="scenSel">
-          <option value="social">社媒内容传播</option>
-          <option value="launch">新品上架</option>
-          <option value="promo">优惠活动</option>
-        </select>
-        <input type="text" id="scenBrief" placeholder="可选：一句话描述内容 / 卖点，如「199 元平替精华，主打成分科普」">
-        <button class="btn btn-primary" onclick="runStress()" style="padding:11px 22px;font-size:14px">运行压力测试</button>
-      </div>
-      <div id="scenOut"></div>
-    </div>
-  </section>
-  </section>
-
-  <div class="foot">
-    虚拟用户压力测试 · 纯前端工具，零后端，数据不出浏览器<br>
-    与「用户研究预测引擎」同源设计语言 · 理论支撑：Rogers / von Hippel / Pareto / Ajzen
+    </section>
   </div>
-</div>
+</section>
+
+<!-- ===== PAGE: INTRO ===== -->
+<section class="page" id="page-intro" style="display:none">
+  <div class="wrap">
+    <div class="hero" style="padding:48px 0 20px">
+      <h1 style="font-size:34px">这是什么</h1>
+      <p>在把产品 / 内容真正推向市场之前，先用一群"虚拟但真实溯源"的用户，对它做一轮压力测试——挑刺、找漏洞、发现极端风险。</p>
+    </div>
+    <section class="section" id="logic">
+      <h2>我们的逻辑</h2><div class="sub">四层结构：真实锚定 → 理论分布 → 算法生成 → 压力测试</div>
+      <div class="grid g4">
+        <div class="glass card"><div class="ic"><svg class="ic-svg"><use href="#w-doc"/></svg></div><div class="num">01</div><h3>真实锚定</h3><p>每一位虚拟用户的核心声音都来自真实 VOC 源头（用户评价 / 社媒反馈），可溯源、不捏造。</p></div>
+        <div class="glass card"><div class="ic"><svg class="ic-svg"><use href="#w-sliders"/></svg></div><div class="num">02</div><h3>理论分布</h3><p>群体结构遵循 Rogers 创新扩散、von Hippel 领先用户、Pareto 影响力等理论，不是均匀抽样。</p></div>
+        <div class="glass card"><div class="ic"><svg class="ic-svg"><use href="#w-layers"/></svg></div><div class="num">03</div><h3>算法生成</h3><p>在真实声音之上，生成层补充私态度、人口代理等带置信度的推断字段，明确标注"哪些是生成的"。</p></div>
+        <div class="glass card"><div class="ic"><svg class="ic-svg"><use href="#w-flask"/></svg></div><div class="num">04</div><h3>压力测试</h3><p>输入你的方案，匹配引擎逐用户计算相关性与立场，输出支持 / 中立 / 反对与驱动因子。</p></div>
+      </div>
+    </section>
+    <section class="section" id="theory">
+      <h2>支撑理论</h2><div class="sub">群体结构背后的四个理论支点</div>
+      <div class="grid g2">
+        <div class="glass card"><div class="ic"><svg class="ic-svg"><use href="#w-bar"/></svg></div><h3>Rogers 创新扩散理论</h3><p>用户接受新事物呈五档分布：创新者 2.5% / 早期采纳者 13.5% / 早期大众 34% / 晚期大众 34% / 落后者 16%。</p></div>
+        <div class="glass card"><div class="ic"><svg class="ic-svg"><use href="#w-target"/></svg></div><h3>von Hippel 领先用户</h3><p>约 10% 极端 / 领先用户，其痛点与改进建议往往预示主流未来需求，是创新信号的集中承载者。</p></div>
+        <div class="glass card"><div class="ic"><svg class="ic-svg"><use href="#w-zap"/></svg></div><h3>Pareto / Heavy-Half</h3><p>影响力高度不均：少数用户（KOL、高赞者）贡献多数声量与传播力，故采用 Pareto 权重。</p></div>
+        <div class="glass card"><div class="ic"><svg class="ic-svg"><use href="#w-users"/></svg></div><h3>Ajzen + 社会期望</h3><p>计划行为理论说明"说的"与"做的"存在 say-do gap；社媒表达还受社会期望偏差影响，故生成层标注置信度。</p></div>
+      </div>
+    </section>
+    <section class="section" id="usecase">
+      <h2>适用场景</h2><div class="sub">什么时候该做一轮压力测试</div>
+      <div class="grid g3">
+        <div class="glass card"><div class="ic"><svg class="ic-svg"><use href="#w-flask"/></svg></div><h3>新品上市前试用</h3><p>把概念丢给这群用户，看哪些人会挑刺、哪些痛点没被解决。</p></div>
+        <div class="glass card"><div class="ic"><svg class="ic-svg"><use href="#w-users"/></svg></div><h3>社媒内容挑刺</h3><p>一篇种草 / 测评文案，哪些用户会反感、会反驳、会传播？</p></div>
+        <div class="glass card"><div class="ic"><svg class="ic-svg"><use href="#w-alert"/></svg></div><h3>极端风险发现</h3><p>识别高影响力 + 高负面情绪的用户，提前预判舆情雷点。</p></div>
+      </div>
+    </section>
+    <section class="section" id="boundary">
+      <h2>能力边界（很重要）</h2><div class="sub">什么能测、什么不能测，必须说清楚</div>
+      <div class="grid g3">
+        <div class="glass card"><div class="ic"><svg class="ic-svg"><use href="#w-check"/></svg></div><h3>可直接压力测试</h3><p>概念测试、功能测试、文案 / 卖点测试、价格敏感度——只要能从 VOC 提取标签，就能算。</p></div>
+        <div class="glass card" style="border:1px solid rgba(255,107,107,.3)"><div class="ic" style="background:linear-gradient(135deg,#ff6b6b,#a855f7)"><svg class="ic-svg"><use href="#w-alert"/></svg></div><h3>真人体验 · 不可虚拟化</h3><p>手感、流畅度、情绪流、真实使用体验——这些是真人的，虚拟用户无法替代。</p></div>
+        <div class="glass card"><div class="ic"><svg class="ic-svg"><use href="#w-link"/></svg></div><h3>前置真实反馈 → 可测</h3><p>若你已收集真人的体验反馈描述，作为输入喂给系统，虚拟用户可复用其洞察做放大推演。</p></div>
+      </div>
+    </section>
+    <section class="section" id="diff">
+      <h2>与「预测世界」的区别</h2><div class="sub">我们另一个工具是上市后效果预测，这里是上市前挑刺</div>
+      <div class="grid g2">
+        <div class="glass card"><div class="ic"><svg class="ic-svg"><use href="#w-flask"/></svg></div><h3>虚拟用户压力测试（本工具）</h3><p>上市前。用虚拟用户挑刺、找漏洞、发现风险。回答"我的方案会被哪些人反对、为什么"。</p></div>
+        <div class="glass card"><div class="ic"><svg class="ic-svg"><use href="#w-compass"/></svg></div><h3>预测世界（用户研究预测引擎）</h3><p>上市后。基于真实数据预测市场表现、扩散路径、人群结构。回答"上市后会怎样"。</p></div>
+      </div>
+    </section>
+  </div>
+</section>
+
+<!-- ===== PAGE: PRINCIPLE (运行原理) ===== -->
+<section class="page" id="page-principle" style="display:none">
+  <div class="wrap">
+    <div class="principle-hero">
+      <h1>运行原理</h1>
+      <p>虚拟用户压力测试不是随机拼贴评价，而是一套有理论、有运算逻辑的系统。下面把"从 VOC 到压力测试结论"的完整链路说清楚——先讲有大模型时的完整内核，再讲纯规则下能做到什么程度，最后给出输出形态。</p>
+    </div>
+
+    <div class="principle-block">
+      <h2><svg class="ic-svg" style="width:20px;height:20px"><use href="#i-alert"/></svg> 问题：只有壳子，没有内核</h2>
+      <p>最初的实现把"用户原话"和"你的问题"直接拼在一起，没有中间推理层：你输入「60美元飞机杯，主打静音」，返回的反对声音里却出现「震动很弱」（与飞机杯静音无关）、「60欧元花在妓女身上」（其他品类）——因为系统没有判断"这条评价跟当前场景是否相关"。立场结论也是模板，不是推理。</p>
+      <div class="diagram"><svg viewBox="0 0 680 300" xmlns="http://www.w3.org/2000/svg"><defs><marker id="ar1" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="#A32D2D" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></marker></defs>
+        <rect x="30" y="30" width="200" height="50" rx="8" fill="#E6F1FB" stroke="#185FA5" stroke-width="0.5"/><text x="130" y="60" text-anchor="middle" class="th" fill="#042C53">用户输入：场景</text>
+        <rect x="300" y="30" width="160" height="50" rx="8" fill="#FCEBEB" stroke="#A32D2D" stroke-width="0.5"/><text x="380" y="52" text-anchor="middle" class="th" fill="#501313">无引擎</text><text x="380" y="70" text-anchor="middle" class="ts" fill="#791F1F">随机采样+模板</text>
+        <line x1="230" y1="55" x2="295" y2="55" stroke="#A32D2D" stroke-width="1.5" marker-end="url(#ar1)" stroke-dasharray="4,3"/>
+        <rect x="30" y="120" width="200" height="60" rx="8" fill="#EEEDFE" stroke="#534AB7" stroke-width="0.5"/><text x="130" y="142" text-anchor="middle" class="th" fill="#26215C">VOC 池 1731 条</text><text x="130" y="162" text-anchor="middle" class="ts" fill="#3C3489">8 分群</text>
+        <path d="M130 180 L130 215 L380 215 L380 245" fill="none" stroke="#A32D2D" stroke-width="1.5" marker-end="url(#ar1)" stroke-dasharray="4,3"/>
+        <rect x="250" y="245" width="320" height="45" rx="8" fill="#FAECE7" stroke="#993C1D" stroke-width="0.5"/><text x="410" y="272" text-anchor="middle" class="ts" fill="#993C1D">输出：模板卡片，原话与场景无关联校验</text>
+      </svg></div>
+    </div>
+
+    <div class="principle-block">
+      <h2><svg class="ic-svg" style="width:20px;height:20px"><use href="#i-layers"/></svg> 完整内核：四层引擎（以有大模型为前提）</h2>
+      <p><b>Layer 1 场景分解</b>：把你的自由文本拆成结构化属性（价格 / 卖点 / 品类 / 场景类型），理论依据是联合分析（Conjoint）——复杂方案可拆为独立可评维度。<br><b>Layer 2 用户画像深化</b>：从原始 VOC 预计算参考价、痛点词、需求标签、强度分，理论依据是 Kahneman 参考依赖 + 保护动机理论。<br><b>Layer 3 核心匹配引擎 ★</b>：对每个用户 × 场景计算相关性评分、价格敏感度、立场概率、响应特异性级别，理论依据是 ELM 精细可能性模型。<br><b>Layer 4 响应生成</b>：以该用户口吻生成回应，含驱动因子归因与风险标注，理论依据是叙事一致性 + 认知失调。</p>
+      <div class="diagram"><svg viewBox="0 0 680 360" xmlns="http://www.w3.org/2000/svg"><defs><marker id="ar2" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="#888780" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></marker></defs>
+        <rect x="30" y="14" width="240" height="40" rx="8" fill="#E6F1FB" stroke="#185FA5" stroke-width="0.5"/><text x="150" y="39" text-anchor="middle" class="th" fill="#042C53">场景输入「60$ 飞机杯·静音」</text>
+        <rect x="30" y="70" width="620" height="56" rx="10" fill="#EAF3DE" stroke="#3B6D11" stroke-width="0.5"/><text x="44" y="90" class="th" fill="#173404">L1 场景分解</text><text x="44" y="110" class="ts" fill="#27500A">价格=$60 · 核心=静音 · 品类=飞机杯 · 场景=新品上架</text>
+        <rect x="30" y="136" width="620" height="60" rx="10" fill="#EEEDFE" stroke="#534AB7" stroke-width="0.5"/><text x="44" y="156" class="th" fill="#26215C">L2 用户画像深化</text><text x="44" y="176" class="ts" fill="#3C3489">参考价 / 痛点词 / 需求标签 / 强度分（从原话预计算）</text>
+        <rect x="30" y="206" width="620" height="78" rx="10" fill="#FAEEDA" stroke="#854F0B" stroke-width="0.5"/><text x="44" y="226" class="th" fill="#412402">L3 核心匹配引擎 ★</text><text x="44" y="246" class="ts" fill="#633806">相关性评分（场景属性∩用户标签）· 价格敏感度（参考价对比）</text><text x="44" y="266" class="ts" fill="#633806">立场概率 f(相关度,星级,价格差) · 响应特异性 L1/L2/L3</text>
+        <rect x="30" y="294" width="620" height="56" rx="10" fill="#E1F5EE" stroke="#0F6E56" stroke-width="0.5"/><text x="44" y="314" class="th" fill="#04342C">L4 响应生成</text><text x="44" y="334" class="ts" fill="#085041">立场+置信 · 驱动因子 · 模拟叙事 · 风险标注</text>
+        <line x1="150" y1="54" x2="150" y2="66" stroke="#888780" stroke-width="1.5" marker-end="url(#ar2)"/><line x1="150" y1="126" x2="150" y2="132" stroke="#888780" stroke-width="1.5" marker-end="url(#ar2)"/><line x1="150" y1="192" x2="150" y2="202" stroke="#888780" stroke-width="1.5" marker-end="url(#ar2)"/><line x1="150" y1="262" x2="150" y2="290" stroke="#888780" stroke-width="1.5" marker-end="url(#ar2)"/>
+      </svg></div>
+    </div>
+
+    <div class="principle-block">
+      <h2><svg class="ic-svg" style="width:20px;height:20px"><use href="#i-sliders"/></svg> 纯规则下能做到什么程度</h2>
+      <p>当前网站走的是纯规则路线（无大模型调用）。以下映射说明每一层如何用规则近似：</p>
+      <div class="diagram"><svg viewBox="0 0 680 300" xmlns="http://www.w3.org/2000/svg"><defs><marker id="ar3" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="#3B6D11" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></marker></defs>
+        <rect x="30" y="20" width="290" height="36" rx="6" fill="#EEEDFE" stroke="#534AB7" stroke-width="0.5"/><text x="175" y="43" text-anchor="middle" class="th" fill="#26215C">有 LLM 时</text>
+        <rect x="360" y="20" width="290" height="36" rx="6" fill="#EAF3DE" stroke="#3B6D11" stroke-width="0.5"/><text x="505" y="43" text-anchor="middle" class="th" fill="#173404">纯规则近似</text>
+        <rect x="30" y="70" width="290" height="44" rx="8" fill="#F1EFE8" stroke="#888780" stroke-width="0.3"/><text x="44" y="97" class="ts" fill="#2C2C2A">L1 LLM 理解场景</text>
+        <rect x="360" y="70" width="290" height="44" rx="8" fill="#EAF3DE" stroke="#3B6D11" stroke-width="0.3"/><text x="374" y="97" class="ts" fill="#173404">正则+关键词词典提取属性</text>
+        <rect x="30" y="124" width="290" height="50" rx="8" fill="#F1EFE8" stroke="#888780" stroke-width="0.3"/><text x="44" y="150" class="ts" fill="#2C2C2A">L2 LLM 深度画像推理</text>
+        <rect x="360" y="124" width="290" height="50" rx="8" fill="#EAF3DE" stroke="#3B6D11" stroke-width="0.3"/><text x="374" y="150" class="ts" fill="#173404">结构化字段+关键词索引预计算</text>
+        <rect x="30" y="184" width="290" height="60" rx="8" fill="#FAECE7" stroke="#993C1D" stroke-width="0.5"/><text x="44" y="208" class="th" fill="#4A1B0C">L3 语义匹配(embedding)</text><text x="44" y="228" class="ts" fill="#993C1D">多属性效用函数 / ELM 路径</text>
+        <rect x="360" y="184" width="290" height="60" rx="8" fill="#EAF3DE" stroke="#3B6D11" stroke-width="0.5"/><text x="374" y="208" class="th" fill="#173404">L3 关键词重叠评分</text><text x="374" y="228" class="ts" fill="#27500A">相关性=场景∩用户标签；价格差公式</text>
+        <rect x="30" y="254" width="290" height="40" rx="8" fill="#F1EFE8" stroke="#888780" stroke-width="0.3"/><text x="44" y="279" class="ts" fill="#2C2C2A">L4 LLM 原创叙事生成</text>
+        <rect x="360" y="254" width="290" height="40" rx="8" fill="#EAF3DE" stroke="#3B6D11" stroke-width="0.3"/><text x="374" y="279" class="ts" fill="#173404">模板增强（注入最相关原话+场景）</text>
+      </svg></div>
+      <p><b>纯规则能做到</b>：场景关键词提取、用户关键词索引、相关性过滤、价格敏感度判定、基于公式的立场概率、驱动因子归因、风险排序、聚合洞察。<br><b>纯规则做不到</b>（需 LLM）：语义等价推理（「静音」≈「吵」≈「声音大」——我们用同义词类别词典部分缓解）、原创模拟叙事、反事实推演、言外之意检测、群体动力学。</p>
+    </div>
+
+    <div class="principle-block">
+      <h2><svg class="ic-svg" style="width:20px;height:20px"><use href="#i-target"/></svg> 匹配引擎的核心公式（纯规则实现）</h2>
+      <p>对每个虚拟用户，先用标签体系将其痛点 / 需求映射到关注维度（价格 / 静音 / 材质 / 耐用 / 清洗 / 尺寸 / 外观 / 功能 / 售后 / 舒适）；再解析场景卖点映射到同一维度集合。两者做交集即"相关性"。</p>
+      <div class="formula">相关性 relevance = |用户关注维度 ∩ 场景卖点维度| / |用户关注维度|<br>立场得分 oppose = 星级基线 + Σ(卖点契合其痛点 ? −0.16 : 卖点契合其需求 ? −0.10 : 未触及 ? +0.05) + 价格偏差 + 未解决痛点余量 + 情绪基调<br>立场 = oppose≥0.52→反对 ; ≤0.40→支持 ; 否则中立<br>置信度 = clamp(|oppose−0.46|×2.2, 0.4, 0.98)<br>风险 = (立场=反对) ? 影响力×(0.5+强度) : 0</div>
+      <p>关键点：若用户痛点是"噪音大"，而场景卖点是"静音"——维度命中且是痛点被解决，<b>该用户反而转为支持</b>，而不是被错判为反对。这正是此前空壳实现缺失的逻辑。</p>
+    </div>
+
+    <div class="principle-block">
+      <h2><svg class="ic-svg" style="width:20px;height:20px"><use href="#i-grid"/></svg> 输出形态：双页结构</h2>
+      <p>工作台生成后，结果组织为两个可切换的页面：<br><b>用户清单</b>——真的有 N 张独立身份卡（默认 100），每张可溯源到真实 VOC 原话，支持按分群 / 立场 / 极端筛选与搜索；压力测试运行后，每张卡显示其立场徽章、驱动因子与相关度。<br><b>数据看板</b>——聚合视图：立场分布、分群×立场矩阵、反对原因聚类、高风险用户排名。两个页面共享同一批运算结果，可来回切换对照。</p>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">虚拟用户压力测试 · 基于真实 VOC + 理论驱动的匹配引擎 · <a href="https://ffswwwda.github.io/user-research-console/" target="_blank" rel="noopener">预测世界</a></div>
+</footer>
 
 <script src="voc-source.js"></script>
 <script>
 const mulberry32=(a)=>{return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}};
 
+/* ===== 理论常量 ===== */
 const SEGMENTS=[
   {key:'innovator',name:'尝鲜型',x:0.85,y:0.6,activity:0.9,isKOL:false,w:0.10,color:'#00d4ff'},
   {key:'price',name:'价格敏感者',x:0.3,y:0.2,activity:0.5,isKOL:false,w:0.18,color:'#fbbf24'},
@@ -466,30 +497,70 @@ const BAND_PROFILE={
   laggard:{watcher:0.5,price:0.3,competitor:0.2}
 };
 const DEMO_PROXY={innovator:'猎奇尝鲜派',price:'价格敏感务实派',quality:'品质至上党',watcher:'从众观望派',pain:'痛点驱动型',kol:'社群意见领袖',critic:'理性批判派',competitor:'竞品粘性强'};
-const SCENARIOS={
-  social:{name:'社媒内容传播',appeal:{innovator:0.8,kol:0.9,pain:0.7,quality:0.6,price:0.4,watcher:0.5,competitor:0.2,critic:0.25}},
-  launch:{name:'新品上架',appeal:{innovator:0.9,kol:0.8,pain:0.85,quality:0.7,price:0.5,watcher:0.55,competitor:0.15,critic:0.3}},
-  promo:{name:'优惠活动',appeal:{innovator:0.5,kol:0.6,pain:0.7,quality:0.4,price:0.95,watcher:0.7,competitor:0.3,critic:0.5}}
-};
+const STAR_BASE={'1':0.42,'2':0.30,'3':0.18,'4':0.07,'5':0.02};
 
+/* ===== 标签体系：关注维度 ↔ 关键词（与 voc-report 九大模块对齐） ===== */
+const CONCERN_CATS={
+  price:   ['价格','贵','便宜','性价比','物有所值','价格合理','价格偏高','不值','预算','划算','欧元','美元','块','花费'],
+  quiet:   ['静音','安静','噪音','吵','声音大','噪声','声音','分贝','室友','宿舍','隐私'],
+  material:['材质','硅胶','软','硬','异味','塑料','tpe','乳胶','肤感','材质安全'],
+  durable: ['耐用','易坏','质量','品控','损坏','坏','寿命','结实','稳定'],
+  clean:   ['清洗','难洗','清洁','洗','卫生','免洗'],
+  size:    ['尺寸','大小','紧','松','太窄','合适','太小','太大','可调'],
+  appear:  ['外观','尴尬','隐蔽','discreet','包装','低调','便携','小巧'],
+  function:['震动','吸力','吸附','加热','充电','功能','强度','动力','真空','档位'],
+  service: ['售后','退换','退货','保修','客服','保障','维修'],
+  comfort: ['舒适','体验','舒服','手感','真实感','感受']
+};
+const CAT_LABEL={price:'价格',quiet:'静音',material:'材质',durable:'耐用',clean:'清洗',size:'尺寸',appear:'外观/隐私',function:'功能',service:'售后',comfort:'舒适'};
+// 场景卖点短语 → 维度
+const SELLING_POINTS={
+  quiet:['静音','安静','降噪','无声','低噪','噪音小','不吵'],
+  price:['便宜','实惠','性价比','低价','平价','划算','优惠','亲民'],
+  material:['硅胶','软','材质','tpe','亲肤','安全材质','软硅胶'],
+  durable:['耐用','结实','质量','品质','不易坏','稳定'],
+  clean:['易清洗','好洗','免洗','卫生','可洗'],
+  size:['尺寸','大小','合适','可调','贴合'],
+  appear:['隐蔽','discreet','低调','隐私','便携','小巧','不尴尬'],
+  function:['震动','强震','吸力','加热','多档','功能','动力'],
+  service:['售后','保修','退换','保障','无忧'],
+  comfort:['舒适','真实','体验','手感','真实感']
+};
+function catOf(token){
+  for(const cat in CONCERN_CATS){
+    if(CONCERN_CATS[cat].some(k=>token.includes(k)||k.includes(token)))return cat;
+  }
+  return null;
+}
+function userCats(v){
+  const m={};
+  (v.barriers||[]).forEach(t=>{const c=catOf(t);if(c)m[c]='barrier';});
+  (v.needs||[]).forEach(t=>{const c=catOf(t);if(c)m[c]= (m[c]==='barrier'?'barrier':'need');});
+  // 价格维度兜底：原话里出现价格词
+  const txt=(v.voice||'')+(v.voiceEN||'');
+  if(/价格|贵|便宜|性价比|美元|欧元|块|元/.test(txt))m.price=m.price||'need';
+  return m;
+}
+
+/* ===== VOC 数据源 ===== */
 let VOC={};
 const BUILTIN_VOC={
-  innovator:[{voice:'这个平替思路有点东西，成分党会买账',sentiment:'正',jtbd:'抢先体验新物种',pain:'市面方案太老',need:'新鲜感+成分透明'},
-            {voice:'终于有人做这个了，第一时间想试',sentiment:'正',jtbd:'尝鲜',pain:'选择太少',need:'早期 access'}],
-  price:[{voice:'太贵了，同等功效的国产便宜一半',sentiment:'负',jtbd:'省钱',pain:'价格高',need:'性价比'},
-         {voice:'大促才考虑，平时不舍得',sentiment:'中',jtbd:'精打细算',pain:'预算紧',need:'促销节点'}],
-  quality:[{voice:'成分表我每样都查，糊弄不了我',sentiment:'中',jtbd:'买放心',pain:'怕踩雷',need:'权威背书+检测'},
-          {voice:'质感不到位直接退，不惯着',sentiment:'负',jtbd:'长期复购',pain:'品控不稳',need:'稳定高品质'}],
-  watcher:[{voice:'再看看别人用得怎么样再说',sentiment:'中',jtbd:'降低决策风险',pain:'怕买错',need:'真实口碑'},
-          {voice:'朋友用了说好我才动',sentiment:'中',jtbd:'从众避险',pain:'信息不足',need:'社会证明'}],
-  pain:[{voice:'我那个痛点它居然真解决了，感动',sentiment:'正',jtbd:'解决老问题',pain:'长期未被满足',need:'针对性方案'},
-        {voice:'宣传说能治 X，结果没啥用',sentiment:'负',jtbd:'找到解法',pain:'反复试错',need:'真实有效'}],
-  kol:[{voice:'这条内容我来首发，带一波节奏',sentiment:'正',jtbd:'维持影响力',pain:'没新鲜素材',need:'可讨论话题'},
-       {voice:'不接没数据的产品，粉丝不傻',sentiment:'中',jtbd:'信任变现',pain:'翻车风险',need:'硬核卖点'}],
-  critic:[{voice:'实测和宣传差太远，劝退',sentiment:'负',jtbd:'避坑',pain:'被夸大宣传',need:'如实描述'},
-         {voice:'这设计反人类，差评走起',sentiment:'负',jtbd:'表达不满',pain:'体验差',need:'基本可用性'}],
-  competitor:[{voice:'我用惯了 XX，换成本太高',sentiment:'中',jtbd:'延续习惯',pain:'迁移麻烦',need:'兼容/延续'},
-             {voice:'你们和 XX 比差在哪？',sentiment:'中',jtbd:'对比择优',pain:'信息差',need:'差异化价值'}]
+  innovator:[{voice:'这个平替思路有点东西，成分党会买账',sentiment:'正',jtbd:'抢先体验新物种',barriers:[],needs:['新鲜感'],star:'5',pain_words:['新鲜感']},
+            {voice:'终于有人做这个了，第一时间想试',sentiment:'正',jtbd:'尝鲜',barriers:[],needs:['早期access'],star:'4',pain_words:['尝鲜']}],
+  price:[{voice:'太贵了，同等功效的国产便宜一半',sentiment:'负',jtbd:'省钱',barriers:['价格偏高'],needs:['性价比'],star:'2',pain_words:['价格偏高','性价比']},
+         {voice:'大促才考虑，平时不舍得',sentiment:'中',jtbd:'精打细算',barriers:[],needs:['促销节点'],star:'3',pain_words:['促销']}],
+  quality:[{voice:'成分表我每样都查，糊弄不了我',sentiment:'中',jtbd:'买放心',barriers:['品控不稳'],needs:['权威背书'],star:'4',pain_words:['品控','权威']},
+          {voice:'质感不到位直接退，不惯着',sentiment:'负',jtbd:'长期复购',barriers:['品控不稳'],needs:['稳定高品质'],star:'2',pain_words:['品控']}],
+  watcher:[{voice:'再看看别人用得怎么样再说',sentiment:'中',jtbd:'降低决策风险',barriers:[],needs:['真实口碑'],star:'3',pain_words:['口碑']},
+          {voice:'朋友用了说好我才动',sentiment:'中',jtbd:'从众避险',barriers:[],needs:['社会证明'],star:'3',pain_words:['社会证明']}],
+  pain:[{voice:'我那个痛点它居然真解决了，感动',sentiment:'正',jtbd:'解决老问题',barriers:['长期未被满足'],needs:['针对性方案'],star:'5',pain_words:['未被满足']},
+        {voice:'宣传说能治 X，结果没啥用',sentiment:'负',jtbd:'找到解法',barriers:['反复试错'],needs:['真实有效'],star:'1',pain_words:['试错']}],
+  kol:[{voice:'这条内容我来首发，带一波节奏',sentiment:'正',jtbd:'维持影响力',barriers:[],needs:['可讨论话题'],star:'4',pain_words:['话题']},
+       {voice:'不接没数据的产品，粉丝不傻',sentiment:'中',jtbd:'信任变现',barriers:['翻车风险'],needs:['硬核卖点'],star:'3',pain_words:['翻车','卖点']}],
+  critic:[{voice:'实测和宣传差太远，劝退',sentiment:'负',jtbd:'避坑',barriers:['被夸大宣传'],needs:['如实描述'],star:'1',pain_words:['夸大']},
+         {voice:'这设计反人类，差评走起',sentiment:'负',jtbd:'表达不满',barriers:['体验差'],needs:['基本可用'],star:'2',pain_words:['体验']}],
+  competitor:[{voice:'我用惯了 XX，换成本太高',sentiment:'中',jtbd:'延续习惯',barriers:['迁移麻烦'],needs:['兼容'],star:'3',pain_words:['迁移']},
+             {voice:'你们和 XX 比差在哪？',sentiment:'中',jtbd:'对比择优',barriers:[],needs:['差异化'],star:'3',pain_words:['差异化']}]
 };
 function loadDemo(){
   const d=window.DEMO_VOC;
@@ -497,167 +568,135 @@ function loadDemo(){
   VOC={};let c=0;
   Object.keys(d.segments).forEach(k=>{const arr=d.segments[k]||[];(VOC[k]=VOC[k]||[]).push(...arr);c+=arr.length;});
   const m=d.meta||{};
-  document.getElementById('vocStat').textContent='当前：'+(m.name||'示例')+' · '+c+' 条（'+Object.keys(VOC).length+' 分群）';
+  document.getElementById('vocStat').textContent='当前：'+(m.name||'示例')+' · '+c+' 条';
   return true;
 }
 function loadBuiltin(){VOC=JSON.parse(JSON.stringify(BUILTIN_VOC));document.getElementById('vocStat').textContent='当前：内置通用样本（'+Object.keys(VOC).length+' 分群）';}
-function loadSource(){
-  const sel=document.getElementById('vocSrc').value;
-  if(sel==='demo'){if(loadDemo())return;}
-  loadBuiltin();
-}
-function resetVOC(){loadSource();}
+function resetVOC(){const sel=document.getElementById('vocSrc').value;if(sel==='demo'){if(loadDemo())return;}loadBuiltin();}
 resetVOC();
-
 function applyVOC(){
   const txt=document.getElementById('vocIn').value.trim();
-  if(!txt){loadSource();return;}
+  if(!txt){resetVOC();return;}
   try{
-    const obj=JSON.parse(txt);
-    const pool=obj.voc||obj.users||obj.segments;
+    const obj=JSON.parse(txt);const pool=obj.voc||obj.users||obj.segments;
     if(!Array.isArray(pool))throw new Error('需含 voc 数组');
     const nv={};let c=0;
-    pool.forEach(it=>{if(!it.segment)return;const k=it.segment;(nv[k]=nv[k]||[]).push({voice:it.voice||'',voiceEN:it.voiceEN||'',sentiment:it.sentiment||'',jtbd:it.jtbd||'',pain:it.pain||'',need:it.need||'',star:it.star||'',country:it.country||''});c++;});
+    pool.forEach(it=>{if(!it.segment)return;const k=it.segment;(nv[k]=nv[k]||[]).push({voice:it.voice||'',voiceEN:it.voiceEN||'',sentiment:it.sentiment||'',jtbd:it.jtbd||'',barriers:it.barriers||[],needs:it.needs||[],star:it.star||'',country:it.country||'',refPrice:it.refPrice||null,intensity:it.intensity||0.5,pain_words:(it.barriers||[]).concat(it.needs||[])});c++;});
     if(c===0)throw new Error('未解析到有效记录');
-    VOC=nv;
-    document.getElementById('vocStat').textContent='已覆盖 '+c+' 条 VOC（'+Object.keys(nv).length+' 分群）';
+    VOC=nv;document.getElementById('vocStat').textContent='已覆盖 '+c+' 条 VOC（'+Object.keys(nv).length+' 分群）';
   }catch(e){alert('VOC 解析失败：'+e.message);}
 }
 
-let USERS=[];
-let paretoK=3, mode='standard';
-
-document.getElementById('modeSeg').addEventListener('click',e=>{
-  if(e.target.dataset.m){mode=e.target.dataset.m;
-    [...e.currentTarget.children].forEach(b=>b.classList.toggle('on',b===e.target));
-    document.getElementById('sliders').classList.toggle('show',mode==='custom');}
-});
-document.getElementById('paretoSeg').addEventListener('click',e=>{
-  if(e.target.dataset.p){paretoK=+e.target.dataset.p;
-    [...e.currentTarget.children].forEach(b=>b.classList.toggle('on',b===e.target));}
-});
-[...document.querySelectorAll('#sliders input[type=range]')].forEach(s=>{
-  s.addEventListener('input',()=>{s.parentElement.querySelector('b').textContent=s.value;
-    const v=[...document.querySelectorAll('#sliders input')].map(x=>+x.value);
-    document.getElementById('sumLine').textContent='当前合计：'+v.reduce((a,b)=>a+b,0)+' · 将按比例归一化';});
-});
-const extR=document.getElementById('extremeR');
-extR.addEventListener('input',()=>document.getElementById('extremeV').textContent=extR.value+'%');
-
-function sampleSeg(rng,dist){
-  let r=rng(),s=0,keys=Object.keys(dist);
-  for(const k of keys){s+=dist[k];if(r<=s)return k;}
-  return keys[keys.length-1];
-}
+/* ===== 生成用户 ===== */
+let USERS=[];let paretoK=3,mode='standard';
+document.getElementById('modeSeg').addEventListener('click',e=>{if(e.target.dataset.m){mode=e.target.dataset.m;[...e.currentTarget.children].forEach(b=>b.classList.toggle('on',b===e.target));document.getElementById('sliders').classList.toggle('show',mode==='custom');}});
+document.getElementById('paretoSeg').addEventListener('click',e=>{if(e.target.dataset.p){paretoK=+e.target.dataset.p;[...e.currentTarget.children].forEach(b=>b.classList.toggle('on',b===e.target));}});
+[...document.querySelectorAll('#sliders input[type=range]')].forEach(s=>{s.addEventListener('input',()=>{s.parentElement.querySelector('b').textContent=s.value;const v=[...document.querySelectorAll('#sliders input')].map(x=>+x.value);document.getElementById('sumLine').textContent='当前合计：'+v.reduce((a,b)=>a+b,0)+' · 将按比例归一化';});});
+const extR=document.getElementById('extremeR');extR.addEventListener('input',()=>document.getElementById('extremeV').textContent=extR.value+'%');
+function sampleSeg(rng,dist){let r=rng(),s=0,keys=Object.keys(dist);for(const k of keys){s+=dist[k];if(r<=s)return k;}return keys[keys.length-1];}
 function stanceLabel(v){return v>=0.66?'强烈支持':v>=0.56?'支持':v>=0.46?'中立偏支持':v>=0.38?'中立':v>=0.3?'中立偏反对':'强烈反对';}
+
 function genUsers(N){
-  const seed=+document.getElementById('seedN').value||1;
-  const rng=mulberry32(seed);
+  const seed=+document.getElementById('seedN').value||1;const rng=mulberry32(seed);
   let props;
-  if(mode==='custom'){
-    const v=[...document.querySelectorAll('#sliders input')].map(x=>+x.value);
-    const sum=v.reduce((a,b)=>a+b,0)||1;
-    props=BANDS.map((b,i)=>({...b,p:v[i]/sum}));
-  }else props=BANDS;
+  if(mode==='custom'){const v=[...document.querySelectorAll('#sliders input')].map(x=>+x.value);const sum=v.reduce((a,b)=>a+b,0)||1;props=BANDS.map((b,i)=>({...b,p:v[i]/sum}));}
+  else props=BANDS;
   const cum=[];let s=0;props.forEach(b=>{s+=b.p;cum.push(s);});
-  const extremePct=(+extR.value)/100;
-  const arr=[];
+  const extremePct=(+extR.value)/100;const arr=[];
   for(let i=0;i<N;i++){
     const r=rng();let bi=0;while(bi<cum.length-1&&r>cum[bi])bi++;
-    const band=BANDS[bi];
-    const segKey=sampleSeg(rng,BAND_PROFILE[band.key]);
-    const seg=SEGMENTS.find(s=>s.key===segKey);
-    let pool=VOC[segKey];
-    if(!pool||!pool.length)pool=Object.values(VOC).flat();
-    const v=pool[Math.floor(rng()*pool.length)]||{voice:'',sentiment:'',jtbd:'',pain:'',need:''};
-    const stated=seg.x;
-    let priv=Math.min(1,Math.max(0,seg.x+(rng()*2-1)*0.18));
-    const gap=Math.abs(priv-stated)>0.22;
+    const band=BANDS[bi];const segKey=sampleSeg(rng,BAND_PROFILE[band.key]);const seg=SEGMENTS.find(s=>s.key===segKey);
+    let pool=VOC[segKey];if(!pool||!pool.length)pool=Object.values(VOC).flat();
+    const v=pool[Math.floor(rng()*pool.length)]||{voice:'',sentiment:'',jtbd:'',barriers:[],needs:[],star:'',country:'',refPrice:null,intensity:0.5,pain_words:[]};
+    const stated=seg.x;let priv=Math.min(1,Math.max(0,seg.x+(rng()*2-1)*0.18));const gap=Math.abs(priv-stated)>0.22;
     const demo=DEMO_PROXY[segKey];
-    arr.push({
-      id:i+1,segKey,segName:seg.name,color:seg.color,
-      band:band.name,bandRank:band.rank,
-      voice:v.voice,sentiment:v.sentiment,jtbd:v.jtbd,pain:v.pain,need:v.need,
+    arr.push({id:i+1,segKey,segName:seg.name,color:seg.color,band:band.name,bandRank:band.rank,
+      voice:v.voice,voiceEN:v.voiceEN||'',sentiment:v.sentiment||'',jtbd:v.jtbd||'',
+      barriers:v.barriers||[],needs:v.needs||[],profile:v.profile||[],scenarios:v.scenarios||[],
+      star:v.star||'',country:v.country||'',refPrice:v.refPrice||null,intensity:(v.intensity!=null?v.intensity:0.5),helpful:v.helpful||0,isKOL:!!v.isKOL,
       stated,private:priv,privateLabel:stanceLabel(priv),gap,
-      isKOL:seg.isKOL,activity:seg.activity,extreme:false,
-      demo,influence:1,
-      _es:band.rank/5*0.5+(seg.isKOL?0.5:0)+seg.activity*0.3+rng()*0.2
-    });
+      isKOL:seg.isKOL,activity:seg.activity,extreme:false,demo,influence:1,
+      _es:band.rank/5*0.5+(seg.isKOL?0.5:0)+seg.activity*0.3+rng()*0.2});
   }
-  const sorted=[...arr].sort((a,b)=>b._es-a._es);
-  const extN=Math.round(N*extremePct);
+  const sorted=[...arr].sort((a,b)=>b._es-a._es);const extN=Math.round(N*extremePct);
   for(let i=0;i<extN;i++)sorted[i].extreme=true;
   const total=arr.length;
   arr.forEach(u=>{const rank=sorted.indexOf(u);u.influence=+(1+paretoK*Math.pow(1-rank/total,2)+(u.isKOL?0.5:0)).toFixed(2);});
   return arr;
 }
 
+/* ===== 标签化身份卡 ===== */
+function tagHTML(arr,cls){if(!arr||!arr.length)return '';return '<div class="tags">'+arr.slice(0,6).map(t=>'<span class="tag '+cls+'">'+t+'</span>').join('')+'</div>';}
 function cardHTML(u){
   const badges=`<div class="badges">${u.extreme?'<span class="badge b-ext">极端/领先</span>':''}${u.isKOL?'<span class="badge b-kol">KOL</span>':''}<span class="badge b-band">${u.band}</span></div>`;
-  const confM=u.gap?'<span class="conf conf-m">中置信</span>':'<span class="conf conf-m">中置信</span>';
-  return `<div class="glass ucard" data-seg="${u.segKey}" data-ext="${u.extreme}" data-voice="${u.voice}">
+  let stress='';
+  if(u.stress){
+    const st=u.stress;const pillCls=st.stance==='support'?'sup':st.stance==='oppose'?'opp':'neu';const pillTxt=st.stance==='support'?'支持':st.stance==='oppose'?'反对':'中立';
+    stress=`<div class="stress"><div class="st"><span class="pill ${pillCls}">${pillTxt}</span><span style="font-size:11.5px;color:var(--tm)">置信 ${(st.confidence*100|0)}%</span><span class="rel">相关度 ${(st.relevance*100|0)}%</span></div>
+      <div class="drivers"><b>驱动因子：</b>${st.drivers.length?st.drivers.join('；'):'无明显驱动（弱相关）'}</div></div>`;
+  }
+  return `<div class="glass ucard" data-seg="${u.segKey}" data-ext="${u.extreme}" data-stance="${u.stress?u.stress.stance:''}" data-voice="${(u.voice+u.barriers.join()+u.needs.join()).toLowerCase()}">
     <div class="uh"><div class="who"><div class="av" style="background:${u.color}">${u.segName[0]}</div>
-      <div><div class="nm">${u.segName} #${u.id}</div><div class="sb">影响力权重 ${u.influence} · 活跃度 ${(u.activity*100|0)}%</div></div></div>${badges}</div>
+      <div><div class="nm">${u.segName} #${u.id}</div><div class="sb">影响力 ${u.influence} · 活跃度 ${(u.activity*100|0)}%${u.extreme?' · 极端':''}</div></div></div>${badges}</div>
     <div class="layer g">
       <div class="lh"><svg class="ic-svg"><use href="#i-doc"/></svg>锚定层 · 必须真实（来自 VOC）</div>
       <div class="voice">“${u.voice}”</div>
       ${u.voiceEN?`<div class="voice-en">原文：${u.voiceEN}</div>`:''}
-      <div class="kv"><b>情绪</b> ${u.sentiment} · <b>JTBD</b> ${u.jtbd||'—'}${u.star?` · <b>星级</b> ${u.star}★`:''}${u.country?` · <b>地区</b> ${u.country}`:''}</div>
-      <div class="kv"><b>痛点</b> ${u.pain||'—'} · <b>需求</b> ${u.need||'—'}</div>
+      <div class="kv"><b>情绪</b> ${u.sentiment||'—'} · <b>JTBD</b> ${u.jtbd||'—'}${u.star?` · <b>星级</b> ${u.star}★`:''}${u.country?` · <b>地区</b> ${u.country}`:''}</div>
+    </div>
+    <div class="layer">
+      <div class="lh"><svg class="ic-svg"><use href="#i-layers"/></svg>标签层 · 对齐 VOC 九大模块</div>
+      ${u.barriers.length?`<div class="kv"><b>使用阻碍</b></div>${tagHTML(u.barriers,'')}`:''}
+      ${u.needs.length?`<div class="kv"><b>需求/改进</b></div>${tagHTML(u.needs,'need')}`:''}
+      ${u.profile.length?`<div class="kv"><b>用户画像</b></div>${tagHTML(u.profile,'prof')}`:''}
+      ${u.scenarios.length?`<div class="kv"><b>使用场景</b></div>${tagHTML(u.scenarios,'scen')}`:''}
     </div>
     <div class="layer a">
       <div class="lh"><svg class="ic-svg"><use href="#i-users"/></svg>生成层 · 算法生成（带置信度）</div>
-      <div class="kv"><b>私态度</b> ${u.privateLabel}${confM}${u.gap?' · 与公开声音存在 say-do gap':''}</div>
+      <div class="kv"><b>私态度</b> ${u.privateLabel}<span class="conf conf-m">中置信</span>${u.gap?' · 与公开声音存在 say-do gap':''}</div>
       <div class="kv"><b>人口代理</b> ${u.demo}<span class="conf conf-l">低置信·推断非真实</span></div>
     </div>
+    ${stress}
   </div>`;
 }
 
+/* ===== 输出：双页 ===== */
 function renderStats(){
-  const N=USERS.length;
-  const ext=USERS.filter(u=>u.extreme).length;
-  const kol=USERS.filter(u=>u.isKOL).length;
+  const N=USERS.length;const ext=USERS.filter(u=>u.extreme).length;const kol=USERS.filter(u=>u.isKOL).length;
   const avgInf=(USERS.reduce((a,u)=>a+u.influence,0)/N).toFixed(2);
-  const stats=document.getElementById('stats');
-  stats.innerHTML=`
-    <div class="glass stat"><div class="l"><svg class="ic-svg"><use href="#i-users"/></svg>虚拟用户</div><div class="v">${N}</div></div>
-    <div class="glass stat"><div class="l"><svg class="ic-svg"><use href="#i-target"/></svg>极端/领先</div><div class="v">${ext}</div></div>
-    <div class="glass stat"><div class="l"><svg class="ic-svg"><use href="#i-zap"/></svg>KOL</div><div class="v">${kol}</div></div>
-    <div class="glass stat"><div class="l"><svg class="ic-svg"><use href="#i-bar"/></svg>平均影响力</div><div class="v">${avgInf}</div></div>
-    <div class="glass stat"><div class="l"><svg class="ic-svg"><use href="#i-sliders"/></svg>分群数</div><div class="v">${SEGMENTS.length}</div></div>`;
+  const stressed=USERS.filter(u=>u.stress).length;
+  document.getElementById('stats').innerHTML=
+    `<div class="glass stat"><div class="l"><svg class="ic-svg"><use href="#i-users"/></svg>虚拟用户</div><div class="v">${N}</div></div>
+     <div class="glass stat"><div class="l"><svg class="ic-svg"><use href="#i-target"/></svg>极端/领先</div><div class="v">${ext}</div></div>
+     <div class="glass stat"><div class="l"><svg class="ic-svg"><use href="#i-zap"/></svg>KOL</div><div class="v">${kol}</div></div>
+     <div class="glass stat"><div class="l"><svg class="ic-svg"><use href="#i-bar"/></svg>平均影响力</div><div class="v">${avgInf}</div></div>
+     <div class="glass stat"><div class="l"><svg class="ic-svg"><use href="#i-shield"/></svg>已压力测试</div><div class="v">${stressed}/${N}</div></div>`;
   const counts=BANDS.map(b=>USERS.filter(u=>u.band===b.name).length);
-  const colors=['#00d4ff','#7f77dd','#a855f7','#cecbf6','#ff6b9d'];
-  const db=document.getElementById('distBar');
-  db.innerHTML=counts.map((c,i)=>`<span style="width:${c/N*100}%;background:${colors[i]}">${c>0?c:''}</span>`).join('');
-  document.getElementById('distLegend').textContent=BANDS.map((b,i)=>`${b.name} ${counts[i]}`).join(' · ');
   const fs=document.getElementById('fSeg');
   if(fs.options.length<=1)SEGMENTS.forEach(s=>{const o=document.createElement('option');o.value=s.key;o.textContent=s.name;fs.appendChild(o);});
 }
-
 function renderGrid(){
-  const seg=document.getElementById('fSeg').value;
-  const ext=document.getElementById('fExt').checked;
-  const q=document.getElementById('fSearch').value.trim().toLowerCase();
-  const list=USERS.filter(u=>(!seg||u.segKey===seg)&&(!ext||u.extreme)&&(!q||(u.voice+u.voiceEN).toLowerCase().includes(q)));
+  const seg=document.getElementById('fSeg').value;const ext=document.getElementById('fExt').checked;
+  const st=document.getElementById('fStance').value;const q=document.getElementById('fSearch').value.trim().toLowerCase();
+  const list=USERS.filter(u=>(!seg||u.segKey===seg)&&(!ext||u.extreme)&&(!st||(u.stress&&u.stress.stance===st))&&(!q||(u.voice+u.voiceEN+u.barriers.join()+u.needs.join()+u.profile.join()).toLowerCase().includes(q)));
   document.getElementById('fCount').textContent='显示 '+list.length+' / '+USERS.length;
   document.getElementById('ugrid').innerHTML=list.map(cardHTML).join('');
 }
-['fSeg','fExt','fSearch'].forEach(id=>document.getElementById(id).addEventListener('input',renderGrid));
+['fSeg','fExt','fStance','fSearch'].forEach(id=>document.getElementById(id).addEventListener('input',renderGrid));
 
 function generate(){
-  const N=Math.max(1,Math.min(2000,+document.getElementById('sizeN').value||100));
+  const N=Math.max(1,Math.min(500,+document.getElementById('sizeN').value||100));
   const btn=document.getElementById('genBtn');btn.disabled=true;
   const wrap=document.getElementById('genWrap');wrap.classList.add('show');
   const bar=document.getElementById('genBar');const pct=document.getElementById('genPct');const txt=document.getElementById('genTxt');
   USERS=genUsers(N);
   document.getElementById('resultArea').style.display='block';
-  document.getElementById('scenPanel').style.display='block';
+  document.getElementById('tabListN').textContent='（'+N+'）';
   renderStats();
-  const step=Math.max(1,Math.ceil(N/40));let i=0;
-  const grid=document.getElementById('ugrid');grid.innerHTML='';
+  const step=Math.max(1,Math.ceil(N/40));let i=0;const grid=document.getElementById('ugrid');grid.innerHTML='';
   function chunk(){
     const end=Math.min(i+step,N);
-    for(;i<end;i++){if(i<200)grid.insertAdjacentHTML('beforeend',cardHTML(USERS[i]));}
+    for(;i<end;i++){if(i<300)grid.insertAdjacentHTML('beforeend',cardHTML(USERS[i]));}
     const p=Math.round(i/N*100);bar.style.width=p+'%';pct.textContent=p+'%';txt.textContent='正在生成虚拟用户… '+i+' / '+N;
     if(i<N)requestAnimationFrame(chunk);
     else{txt.textContent='生成完成 · 共 '+N+' 张虚拟用户卡';btn.disabled=false;renderGrid();document.getElementById('resultArea').scrollIntoView({behavior:'smooth'});}
@@ -665,37 +704,110 @@ function generate(){
   chunk();
 }
 
-function runStress(){
+/* ===== 场景解析 + 匹配引擎（核心内核） ===== */
+function parseScenario(){
   const sk=document.getElementById('scenSel').value;
-  const scen=SCENARIOS[sk];
   const brief=document.getElementById('scenBrief').value.trim();
-  let sup=0,neu=0,opp=0;const concerns=[];
-  USERS.forEach(u=>{
-    const ap=scen.appeal[u.segKey]??0.5;
-    const score=u.private*0.5+ap*0.3+(u.bandRank/5)*0.2;
-    const r=score>=0.62?'support':score>=0.42?'neutral':'oppose';
-    if(r==='support')sup++;else if(r==='neutral')neu++;else{opp++;if(concerns.length<8)concerns.push({u,score});}
+  const scenName={launch:'新品上架',social:'社媒内容传播',promo:'优惠活动'}[sk];
+  // 价格提取
+  let price=null;const pm=brief.match(/(\d+(?:\.\d+)?)\s*(?:元|块|刀|美金|美元|欧元|€|eur|usd|\$|rmb|￥)/i);
+  if(pm)price=parseFloat(pm[1]);
+  // 卖点维度：扫描场景名 + 简述
+  const hay=(scenName+' '+brief).toLowerCase();
+  const sellCats=new Set();
+  for(const cat in SELLING_POINTS){if(SELLING_POINTS[cat].some(p=>hay.includes(p.toLowerCase())))sellCats.add(cat);}
+  return {sk,scenName,brief,price,sellCats:[...sellCats]};
+}
+function matchUser(u,sc){
+  const v=u;const uc=userCats(v);
+  let oppose=STAR_BASE[u.star]!=null?STAR_BASE[u.star]:0.18;
+  let relevance=0;const drivers=[];
+  // 价格维度
+  if(sc.price!=null){
+    if(u.refPrice!=null){
+      const ratio=sc.price/u.refPrice;
+      if(ratio>1.15){const pen=Math.min(0.30,ratio-1);oppose+=pen;drivers.push('价格偏高（$'+sc.price+' vs 参考$'+u.refPrice+'）');relevance+=0.35;}
+      else if(ratio<0.85){oppose-=0.10;drivers.push('价格低于参考（更实惠）');relevance+=0.25;}
+    }else if(uc.price){
+      if(sc.price>=50){oppose+=0.12;drivers.push('价格偏高（$'+sc.price+'）');relevance+=0.20;}
+    }
+  }
+  // 卖点 vs 关注维度
+  let addressCount=0;
+  sc.sellCats.forEach(cat=>{
+    if(uc[cat]==='barrier'){oppose-=0.16;drivers.push('卖点"'+CAT_LABEL[cat]+'"缓解其痛点');relevance+=0.45;addressCount++;}
+    else if(uc[cat]==='need'){oppose-=0.10;drivers.push('卖点"'+CAT_LABEL[cat]+'"契合其需求');relevance+=0.35;addressCount++;}
+    else{relevance+=0.05;}
   });
-  const N=USERS.length;
-  const out=document.getElementById('scenOut');
-  out.innerHTML=`
-    <div class="note" style="margin:0 0 4px">场景：<b style="color:var(--tp)">${scen.name}</b>${brief?' · 「'+brief+'」':''} · 共 ${N} 位虚拟用户</div>
-    <div class="agg"><span class="sup" style="width:${sup/N*100}%">支持 ${sup}</span><span class="neu" style="width:${neu/N*100}%">中立 ${neu}</span><span class="opp" style="width:${opp/N*100}%">反对 ${opp}</span></div>
-    <div class="note">支持率 ${(sup/N*100).toFixed(0)}% · 反对率 ${(opp/N*100).toFixed(0)}%。${opp/N>0.3?'<svg class="ic-svg" style="width:14px;height:14px;vertical-align:-2px;color:var(--red)"><use href="#i-alert"/></svg> 反对占比偏高，建议先调整方案再投放。':opp/N<0.15?'反对可控，方案较为稳健。':'反对中等，关注极端用户叙事。'}</div>
-    ${concerns.length?`<div class="concerns"><div class="note" style="margin:12px 0 6px">代表性反对声音（压力点）：</div>${concerns.map(c=>`<div class="cc"><b>${c.u.segName}</b>（${c.u.band}）：“${c.u.voice}” → 对该场景偏反对，需关注其${c.u.pain}。</div>`).join('')}</div>`:''}`;
-  out.scrollIntoView({behavior:'smooth',block:'nearest'});
+  // 未解决的痛点（用户有该维度痛点，但场景未触及）
+  Object.keys(uc).forEach(cat=>{if(uc[cat]==='barrier'&&!sc.sellCats.includes(cat)){oppose+=0.05;}});
+  // 情绪基调
+  if(u.sentiment==='负')oppose+=0.10;else if(u.sentiment==='正')oppose-=0.05;
+  oppose=Math.max(0,Math.min(1,oppose));
+  const stance=oppose>=0.52?'oppose':oppose<=0.40?'support':'neutral';
+  const confidence=Math.max(0.4,Math.min(0.98,Math.abs(oppose-0.46)*2.2));
+  const risk=(stance==='oppose')?+(u.influence*(0.5+u.intensity)).toFixed(2):0;
+  return {stance,confidence,relevance:Math.min(1,relevance),drivers,risk,priceHit:sc.price!=null&&uc.price!=null};
+}
+function runStress(){
+  const sc=parseScenario();
+  USERS.forEach(u=>{u.stress=matchUser(u,sc);});
+  renderGrid();
+  renderDashboard(sc);
+  showOut('dash');
+  document.getElementById('out-dash').scrollIntoView({behavior:'smooth'});
 }
 
-document.getElementById('themeBtn').addEventListener('click',()=>{
-  document.body.classList.toggle('dark');document.body.classList.toggle('light');
-  const m=document.body.classList.contains('dark');
-  document.getElementById('themeBtn').innerHTML='<svg class="ic-svg"><use href="#'+(m?'i-sun':'i-moon')+'"/></svg>';
-});
-const cur=document.getElementById('cur'),cg=document.getElementById('curGlow');
-addEventListener('mousemove',e=>{cur.style.left=cg.style.left=e.clientX+'px';cur.style.top=cg.style.top=e.clientY+'px';});
-document.addEventListener('mouseover',e=>{if(e.target.closest('a,button,.ucard,input,select,textarea,.seg'))cur.classList.add('hov');});
-document.addEventListener('mouseout',e=>{if(e.target.closest('a,button,.ucard,input,select,textarea,.seg'))cur.classList.remove('hov');});
+/* ===== 数据看板 ===== */
+function renderDashboard(sc){
+  const N=USERS.length;
+  const sup=USERS.filter(u=>u.stress.stance==='support').length;
+  const neu=USERS.filter(u=>u.stress.stance==='neutral').length;
+  const opp=USERS.filter(u=>u.stress.stance==='oppose').length;
+  // 驱动因子聚类
+  const driverCount={};
+  USERS.forEach(u=>{if(u.stress.stance==='oppose'){(u.stress.drivers||[]).forEach(d=>{const key=d.replace(/\（.*?\）|\（.*?\）/g,'').replace(/\$.*?(vs|$)/g,'').slice(0,18);driverCount[key]=(driverCount[key]||0)+1;});}});
+  const driversSorted=Object.entries(driverCount).sort((a,b)=>b[1]-a[1]).slice(0,8);
+  // 分群×立场
+  const segRows=SEGMENTS.map(s=>{const us=USERS.filter(u=>u.segKey===s.key);return {name:s.name,color:s.color,sup:us.filter(u=>u.stress.stance==='support').length,neu:us.filter(u=>u.stress.stance==='neutral').length,opp:us.filter(u=>u.stress.stance==='oppose').length,tot:us.length};});
+  // 风险排名
+  const risks=USERS.filter(u=>u.stress.risk>0).sort((a,b)=>b.stress.risk-a.stress.risk).slice(0,10);
+  const maxRisk=risks.length?risks[0].stress.risk:1;
+  const out=document.getElementById('dashOut');
+  out.innerHTML=`
+    <div class="glass panel" style="margin-bottom:18px">
+      <h4><svg class="ic-svg"><use href="#i-flask"/></svg>压力测试结果 · ${sc.scenName}${sc.brief?' · 「'+sc.brief+'」':''}</h4>
+      <div class="note" style="padding-top:0">共 ${N} 位虚拟用户参与。引擎解析场景属性：${sc.price?('价格 $'+sc.price+' · '):''}卖点维度 [${sc.sellCats.map(c=>CAT_LABEL[c]).join('、')||'未识别'}]</div>
+      <div class="agg-bar"><span class="sup" style="width:${sup/N*100}%">支持 ${sup}</span><span class="neu" style="width:${neu/N*100}%">中立 ${neu}</span><span class="opp" style="width:${opp/N*100}%">反对 ${opp}</span></div>
+      <div class="note" style="padding-bottom:0">支持率 ${(sup/N*100).toFixed(0)}% · 反对率 ${(opp/N*100).toFixed(0)}%。${opp/N>0.3?'<svg class="ic-svg" style="width:14px;height:14px;vertical-align:-2px;color:var(--red)"><use href="#i-alert"/></svg> 反对占比偏高，建议先调整方案再投放。':opp/N<0.15?'反对可控，方案较为稳健。':'反对中等，关注极端用户叙事。'}</div>
+    </div>
+    <div class="dash-grid">
+      <div class="glass panel">
+        <h4><svg class="ic-svg"><use href="#i-bar"/></svg>分群 × 立场</h4>
+        <table class="matrix"><tr><th>分群</th><th>支持</th><th>中立</th><th>反对</th><th>小计</th></tr>
+        ${segRows.map(r=>`<tr><td>${r.name}</td><td style="color:var(--green)">${r.sup}</td><td style="color:var(--amber)">${r.neu}</td><td style="color:var(--red)">${r.opp}</td><td style="color:var(--tm)">${r.tot}</td></tr>`).join('')}</table>
+      </div>
+      <div class="glass panel">
+        <h4><svg class="ic-svg"><use href="#i-target"/></svg>反对原因聚类（Top 8）</h4>
+        ${driversSorted.length?driversSorted.map(([k,v])=>{const pct=Math.round(v/opp*100);return `<div class="dist-row"><span class="lab">${k}</span><span class="bar"><i style="width:${pct}%;background:var(--red)"></i></span><span class="val">${v}人</span></div>`;}).join(''):'<div class="empty">无显著反对驱动</div>'}
+      </div>
+    </div>
+    <div class="glass panel">
+      <h4><svg class="ic-svg"><use href="#i-shield"/></svg>高风险反对者排名（影响力 × 负面情绪强度）</h4>
+      ${risks.length?risks.map(u=>`<div class="risk-item"><div class="ri-av" style="background:${u.color}">${u.segName[0]}</div><div class="ri-body"><div class="ri-name">${u.segName} #${u.id} <span style="font-size:11px;color:var(--td)">影响力 ${u.influence} · 强度 ${u.intensity}</span></div><div class="ri-why">“${u.voice.slice(0,60)}”${u.stress.drivers.length?' · 驱动：'+u.stress.drivers.join('；'):''}</div></div><span class="ri-flag">风险 ${u.stress.risk}</span></div>`).join(''):'<div class="empty">无高风险用户</div>'}
+    </div>`;
+}
 
+/* ===== 输出页切换 ===== */
+function showOut(t){
+  document.querySelectorAll('.out-tab').forEach(b=>b.classList.toggle('on',b.dataset.out===t));
+  document.getElementById('out-list').style.display=(t==='list')?'block':'none';
+  document.getElementById('out-dash').style.display=(t==='dash')?'block':'none';
+}
+document.querySelectorAll('.out-tab').forEach(b=>b.addEventListener('click',()=>showOut(b.dataset.out)));
+
+/* ===== 主题 / 导航 ===== */
+document.getElementById('themeBtn').addEventListener('click',()=>{document.body.classList.toggle('dark');document.body.classList.toggle('light');const m=document.body.classList.contains('dark');document.getElementById('themeBtn').innerHTML='<svg class="ic-svg"><use href="#'+(m?'i-sun':'i-moon')+'"/></svg>';});
 function showPage(p){
   document.querySelectorAll('.page').forEach(s=>s.style.display=(s.id==='page-'+p)?'block':'none');
   document.querySelectorAll('.nav-pg').forEach(a=>a.classList.toggle('on',a.dataset.page===p));
