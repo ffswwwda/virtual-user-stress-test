@@ -593,10 +593,75 @@ const BAND_PROFILE={
 };
 const DEMO_PROXY={innovator:'猎奇尝鲜派',price:'价格敏感务实派',quality:'品质至上党',watcher:'从众观望派',pain:'痛点驱动型',kol:'社群意见领袖',critic:'理性批判派',competitor:'竞品粘性强'};
 const SCENARIOS={
-  social:{name:'社媒内容传播',appeal:{innovator:0.8,kol:0.9,pain:0.7,quality:0.6,price:0.4,watcher:0.5,competitor:0.2,critic:0.25}},
-  launch:{name:'新品上架',appeal:{innovator:0.9,kol:0.8,pain:0.85,quality:0.7,price:0.5,watcher:0.55,competitor:0.15,critic:0.3}},
-  promo:{name:'优惠活动',appeal:{innovator:0.5,kol:0.6,pain:0.7,quality:0.4,price:0.95,watcher:0.7,competitor:0.3,critic:0.5}}
+  social:{name:'社媒内容传播',appeal:{innovator:0.8,kol:0.9,pain:0.7,quality:0.6,price:0.4,watcher:0.5,competitor:0.2,critic:0.25},focus:['quiet','func','look','comfort'],defaultPrice:null},
+  launch:{name:'新品上架',appeal:{innovator:0.9,kol:0.8,pain:0.85,quality:0.7,price:0.5,watcher:0.55,competitor:0.15,critic:0.3},focus:['func','quiet','material','comfort','durable'],defaultPrice:199},
+  promo:{name:'优惠活动',appeal:{innovator:0.5,kol:0.6,pain:0.7,quality:0.4,price:0.95,watcher:0.7,competitor:0.3,critic:0.5},focus:['price'],defaultPrice:99}
 };
+
+/* ===== 匹配引擎 · 纯规则内核（不接大模型） ===== */
+const CONCERN_CATS=[
+  {key:'price',   label:'价格',      words:['价格','便宜','贵','性价比','划算','实惠','值','大促','优惠','折扣','低价']},
+  {key:'quiet',   label:'静音/噪音',  words:['静音','噪音','安静','声音','噪声','吵','分贝']},
+  {key:'material',label:'材质/安全',  words:['材质','材料','硅胶','软','安全','无毒','亲肤','环保']},
+  {key:'durable', label:'耐用/质量',  words:['耐用','耐久','质量','品质','结实','坏','破损','做工','品控']},
+  {key:'clean',   label:'清洗/卫生',  words:['清洗','清洁','卫生','好洗','防水','打理']},
+  {key:'size',    label:'尺寸/便携',  words:['尺寸','大小','便携','体积','小巧','收纳','重量']},
+  {key:'look',    label:'外观/设计',  words:['外观','颜值','好看','设计','漂亮','造型','颜值']},
+  {key:'func',    label:'功能/性能',  words:['功能','模式','震动','吸力','强度','续航','电池','充电','档位']},
+  {key:'service', label:'售后',       words:['售后','客服','保修','退换','保障','服务']},
+  {key:'comfort', label:'舒适/体验',  words:['舒适','舒服','手感','贴合','体验','感受','爽']}
+];
+const PRICE_RE=/(\d+(?:\.\d+)?)\s*(?:元|块|刀|美金|美元|欧元|块钱|RMB|￥|eur|euro|usd|dollar|\$)/i;
+function extractPrice(t){ if(!t)return null; const m=PRICE_RE.exec(t||''); return m?parseFloat(m[1]):null; }
+function computeIntensity(voice,star){
+  const sn=parseInt(star)||3;
+  const ex=(voice.match(/[!！?？]/g)||[]).length;
+  const lf=Math.min(1,(voice||'').length/200);
+  let it=0.25+(sn<=2?0.3:0)+Math.min(0.2,ex*0.04)+lf*0.3;
+  return Math.round(Math.min(1,Math.max(0,it))*100)/100;
+}
+// 从 VOC 条目（原话+痛点+需求）扫描命中的关注维度（中文触发词匹配）
+function userCats(u){
+  const text=((u.voice||'')+' '+(u.pain||'')+' '+(u.need||'')).toLowerCase();
+  return CONCERN_CATS.filter(c=>c.words.some(w=>text.includes(w.toLowerCase()))).map(c=>c.key);
+}
+// 场景解析：从 brief 文本正则提取价格 + 命中关注维度；缺省用场景默认关注
+function scenarioParser(brief, sk){
+  const scen=SCENARIOS[sk]||{};
+  const text=(brief||'').toLowerCase();
+  const kw=new Set(scen.focus||[]);
+  CONCERN_CATS.forEach(c=>{ if(c.words.some(w=>text.includes(w.toLowerCase()))) kw.add(c.key); });
+  const price=extractPrice(brief||'');
+  return {price:(price!=null?price:(scen.defaultPrice||null)), keywords:[...kw], basePrice:(scen.defaultPrice||null), type:sk};
+}
+// 单用户 × 场景 匹配：相关度 + 价格敏感度 + 立场概率 + 驱动因子归因 + 风险
+function matchUser(u, sp){
+  const uCats=userCats(u);
+  const inter=sp.keywords.filter(k=>uCats.includes(k));
+  const rel=sp.keywords.length?Math.min(1,inter.length/sp.keywords.length+(inter.length?0.15:0)):0.3;
+  const starN=parseInt(u.vstar)||3;
+  const neg=u.sentiment==='负'?1:(u.sentiment==='正'?0:0.5);
+  let priceFactor=0, priceNote='';
+  if(sp.keywords.includes('price') && u.refPrice!=null && sp.price!=null && u.refPrice>0){
+    priceFactor=Math.max(0,(sp.price-u.refPrice)/u.refPrice);    // 高于参考价→>0
+    priceNote=(sp.price>u.refPrice?'场景价高于':'场景价低于')+'其参考价 '+u.refPrice+'（场景价 '+sp.price+'）';
+  }else if(sp.keywords.includes('price') && u.refPrice==null){
+    priceNote='该用户未提及参考价，价格敏感度未知';
+  }
+  // 立场概率：私态度（persona 基线）× 场景相关性修正
+  const disp = 1 - u.private;                                  // 基线反对倾向 0~1
+  const sceneSignal = Math.min(1, rel*neg*0.6 + priceFactor*0.3 + (starN<=2?0.2:0)*neg);
+  const pOpp=Math.min(1,Math.max(0, disp*0.6 + sceneSignal*0.4));
+  const stance=pOpp>=0.55?'oppose':pOpp>=0.45?'neutral':'support';
+  // 驱动因子归因
+  let driver='disposition', driverDetail='基线情绪/态度倾向';
+  if(priceFactor>0.1 && sp.keywords.includes('price')){driver='price';driverDetail=priceNote;}
+  else if(rel>0.4 && neg>=0.5){driver='concern';driverDetail='场景击中其痛点/需求关键词「'+inter.map(k=>{const c=CONCERN_CATS.find(x=>x.key===k);return c?c.label:k;}).join('、')+'」';}
+  else if(starN<=2){driver='star';driverDetail='原评价星级偏低（'+starN+'★）';}
+  else if(priceNote){driver='price';driverDetail=priceNote;}
+  const risk=+(u.influence*(0.5+u.intensity)).toFixed(2);
+  return {rel:Math.round(rel*100)/100,inter,priceFactor,priceNote,prob:pOpp,stance,driver,driverDetail,risk,starN};
+}
 
 let VOC={};
 const BUILTIN_VOC={
@@ -704,6 +769,8 @@ function genUsers(N){
       id:i+1,segKey,segName:seg.name,color:seg.color,
       band:band.name,bandRank:band.rank,
       voice:v.voice,sentiment:v.sentiment,jtbd:v.jtbd,pain:v.pain,need:v.need,
+      vstar:v.star,
+      refPrice:extractPrice(v.voice),intensity:computeIntensity(v.voice,v.star),
       stated,private:priv,privateLabel:stanceLabel(priv),gap,
       isKOL:seg.isKOL,activity:seg.activity,extreme:false,
       demo,influence:1,
@@ -793,20 +860,51 @@ function runStress(){
   const sk=document.getElementById('scenSel').value;
   const scen=SCENARIOS[sk];
   const brief=document.getElementById('scenBrief').value.trim();
-  let sup=0,neu=0,opp=0;const concerns=[];
+  const sp=scenarioParser(brief, sk);
+  let sup=0,neu=0,opp=0;
+  const concerns=[];                       // 反对且高风险的代表声音
+  const driverCnt={};                      // 反对主因分布
+  const kwCnt={};                          // 反对者命中关键词频次
   USERS.forEach(u=>{
-    const ap=scen.appeal[u.segKey]??0.5;
-    const score=u.private*0.5+ap*0.3+(u.bandRank/5)*0.2;
-    const r=score>=0.62?'support':score>=0.42?'neutral':'oppose';
-    if(r==='support')sup++;else if(r==='neutral')neu++;else{opp++;if(concerns.length<8)concerns.push({u,score});}
+    const m=matchUser(u, sp);
+    if(m.stance==='support')sup++;
+    else if(m.stance==='neutral')neu++;
+    else{opp++;driverCnt[m.driver]=(driverCnt[m.driver]||0)+1;
+      m.inter.forEach(k=>kwCnt[k]=(kwCnt[k]||0)+1);
+      concerns.push({u,m});}
   });
+  concerns.sort((a,b)=>b.m.risk-a.m.risk);
+  if(concerns.length>10)concerns.length=10;
   const N=USERS.length;
+  const DRIVER_LABEL={price:'价格偏高',concern:'场景击中痛点',star:'原评价低星',disposition:'基线态度'};
+  const driverLine=Object.keys(driverCnt).sort((a,b)=>driverCnt[b]-driverCnt[a])
+    .map(k=>`${DRIVER_LABEL[k]||k} ${driverCnt[k]}`).join(' · ')||'—';
+  const topKw=Object.keys(kwCnt).sort((a,b)=>kwCnt[b]-kwCnt[a]).slice(0,6)
+    .map(k=>{const c=CONCERN_CATS.find(x=>x.key===k);return (c?c.label:k)+' '+kwCnt[k];}).join(' · ')||'—';
   const out=document.getElementById('scenOut');
   out.innerHTML=`
-    <div class="note" style="margin:0 0 4px">场景：<b style="color:var(--tp)">${scen.name}</b>${brief?' · 「'+brief+'」':''} · 共 ${N} 位虚拟用户</div>
+    <div class="note" style="margin:0 0 4px">场景：<b style="color:var(--tp)">${scen.name}</b>${brief?' · 「'+brief+'」':''} · 共 ${N} 位虚拟用户
+      ${sp.price!=null?` · 场景价 <b style="color:var(--tp)">${sp.price}</b>`:''} · 关注维度 ${sp.keywords.map(k=>{const c=CONCERN_CATS.find(x=>x.key===k);return c?c.label:k;}).join('/')||'通用'}</div>
     <div class="agg"><span class="sup" style="width:${sup/N*100}%">支持 ${sup}</span><span class="neu" style="width:${neu/N*100}%">中立 ${neu}</span><span class="opp" style="width:${opp/N*100}%">反对 ${opp}</span></div>
     <div class="note">支持率 ${(sup/N*100).toFixed(0)}% · 反对率 ${(opp/N*100).toFixed(0)}%。${opp/N>0.3?'<svg class="ic-svg" style="width:14px;height:14px;vertical-align:-2px;color:var(--red)"><use href="#i-alert"/></svg> 反对占比偏高，建议先调整方案再投放。':opp/N<0.15?'反对可控，方案较为稳健。':'反对中等，关注极端用户叙事。'}</div>
-    ${concerns.length?`<div class="concerns"><div class="note" style="margin:12px 0 6px">代表性反对声音（压力点）：</div>${concerns.map(c=>`<div class="cc"><b>${c.u.segName}</b>（${c.u.band}）：“${c.u.voice}” → 对该场景偏反对，需关注其${c.u.pain}。</div>`).join('')}</div>`:''}`;
+    <div class="glass" style="padding:16px 18px;margin:14px 0 4px">
+      <div class="note" style="margin:0 0 8px"><b style="color:var(--tp)">聚合洞察 · 反对归因</b></div>
+      <div class="kv"><b>反对主因</b> ${driverLine}</div>
+      <div class="kv"><b>高频反对关键词</b> ${topKw}</div>
+      <div class="kv" style="color:var(--tm);font-size:12.5px">计算口径：相关度（场景维度∩用户痛点词）× 价格偏差 × 星级反向 × 情绪标签 加权得出立场概率；仅相关用户计入反对归因。</div>
+    </div>
+    ${concerns.length?`<div class="concerns"><div class="note" style="margin:14px 0 6px">代表性反对声音（按风险排序，共 ${opp} 位反对）：</div>${
+      concerns.map(c=>`<div class="cc">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px">
+          <b>${c.u.segName}</b>（${c.u.band}）${c.u.extreme?'<span class="badge b-ext">极端/领先</span>':''}${c.u.isKOL?'<span class="badge b-kol">KOL</span>':''}
+          <span style="font-size:11px;padding:2px 8px;border-radius:10px;background:rgba(239,68,68,.16);color:#fca5a5">风险 ${c.m.risk}</span>
+          <span style="font-size:11px;padding:2px 8px;border-radius:10px;background:rgba(0,212,255,.14);color:#7dd3fc">相关度 ${(c.m.rel*100|0)}%</span>
+          <span style="font-size:11px;padding:2px 8px;border-radius:10px;background:rgba(168,85,247,.16);color:#d8b4fe">驱动：${DRIVER_LABEL[c.m.driver]||c.m.driver}</span>
+        </div>
+        “${c.u.voice}”
+        <div style="font-size:12.5px;color:var(--ts);margin-top:5px">↳ ${c.m.driverDetail}${c.m.priceNote&&c.m.driver!=='price'?'；'+c.m.priceNote:''}</div>
+      </div>`).join('')
+    }</div>`:''}`;
   out.scrollIntoView({behavior:'smooth',block:'nearest'});
 }
 
