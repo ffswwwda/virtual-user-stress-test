@@ -179,6 +179,7 @@ body.light .voice-en{border-left-color:var(--border-l)}
 .conf-l{background:rgba(239,68,68,.16);color:#fca5a5}
 .empty{text-align:center;padding:60px 20px;color:var(--ts)}
 .empty svg{width:54px;height:54px;opacity:.4;margin-bottom:14px}
+.empty .btn{padding:10px 22px;font-size:13.5px;border-radius:11px;display:inline-flex;align-items:center;gap:6px}
 .scen{padding:26px;margin-top:30px}
 .scen .srow{display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin:14px 0}
 .scen select,.scen input[type=text]{background:rgba(255,255,255,.05);border:1px solid var(--border);color:var(--tp);border-radius:10px;padding:10px 13px;font-size:14px;font-family:inherit;flex:1;min-width:200px}
@@ -629,6 +630,7 @@ body.light .tab:hover{background:rgba(0,0,0,.04)}
           </select>
           <button class="btn btn-sec" onclick="loadSource()" style="padding:10px 18px;font-size:13px">载入数据源</button>
           <span id="vocStat" style="font-size:12px;color:var(--tm);align-self:center">当前：示例数据集</span>
+          <span id="vocLoadHint" style="font-size:12px;align-self:center;padding:4px 10px;border-radius:8px;border:1px solid transparent;opacity:0;transition:opacity .3s;margin-left:4px"></span>
         </div>
         <textarea id="vocIn" placeholder='可选覆盖。例如：{"voc":[{"segment":"price","voice":"太贵了，同等功效的国产便宜一半","sentiment":"负","jtbd":"省钱","pain":"价格高","need":"性价比"}]}'></textarea>
         <div style="display:flex;gap:10px">
@@ -895,18 +897,31 @@ const BUILTIN_VOC={
 };
 function loadDemo(){
   const d=window.DEMO_VOC;
-  if(!d||!d.segments)return false;
+  if(!d||!d.segments){showLoadHint('✗ 示例数据未载入（voc-source.js 缺失）',false);return false;}
   VOC={};let c=0;
   Object.keys(d.segments).forEach(k=>{const arr=d.segments[k]||[];(VOC[k]=VOC[k]||[]).push(...arr);c+=arr.length;});
   const m=d.meta||{};
   document.getElementById('vocStat').textContent='当前：'+(m.name||'示例')+' · '+c+' 条（'+Object.keys(VOC).length+' 分群）';
+  showLoadHint('✓ 已载入示例集 · '+c+' 条 / '+Object.keys(VOC).length+' 分群',true);
   return true;
 }
-function loadBuiltin(){VOC=JSON.parse(JSON.stringify(BUILTIN_VOC));document.getElementById('vocStat').textContent='当前：内置通用样本（'+Object.keys(VOC).length+' 分群）';}
+function loadBuiltin(){VOC=JSON.parse(JSON.stringify(BUILTIN_VOC));document.getElementById('vocStat').textContent='当前：内置通用样本（'+Object.keys(VOC).length+' 分群）';showLoadHint('✓ 已载入内置通用样本 · '+Object.keys(VOC).length+' 分群',true);}
 function loadSource(){
   const sel=document.getElementById('vocSrc').value;
-  if(sel==='demo'){if(loadDemo())return;}
+  if(sel==='demo'){if(loadDemo())return;loadBuiltin();return;}
   loadBuiltin();
+}
+let _loadHintT=null;
+function showLoadHint(msg,ok){
+  const el=document.getElementById('vocLoadHint');
+  if(!el)return;
+  el.textContent=msg;
+  el.style.color=ok?'var(--tp)':'#ff7a8a';
+  el.style.borderColor=ok?'rgba(0,212,255,.3)':'rgba(255,122,138,.4)';
+  el.style.background=ok?'rgba(0,212,255,.08)':'rgba(255,122,138,.1)';
+  el.style.opacity='1';
+  if(_loadHintT)clearTimeout(_loadHintT);
+  _loadHintT=setTimeout(()=>{el.style.transition='opacity .4s';el.style.opacity='0';setTimeout(()=>{el.style.transition='';},400);},2600);
 }
 function resetVOC(){loadSource();}
 resetVOC();
@@ -923,7 +938,8 @@ function applyVOC(){
     if(c===0)throw new Error('未解析到有效记录');
     VOC=nv;
     document.getElementById('vocStat').textContent='已覆盖 '+c+' 条 VOC（'+Object.keys(nv).length+' 分群）';
-  }catch(e){alert('VOC 解析失败：'+e.message);}
+    showLoadHint('✓ VOC 已覆盖 · '+c+' 条 / '+Object.keys(nv).length+' 分群',true);
+  }catch(e){showLoadHint('✗ 解析失败：'+e.message,false);}
 }
 
 let USERS=[];
@@ -996,7 +1012,7 @@ function genUsers(N){
   return arr;
 }
 
-function cardHTML(u){
+function cardHTML(u,idx){
   const badges=`<div class="badges">${u.extreme?'<span class="badge b-ext">极端/领先</span>':''}${u.isKOL?'<span class="badge b-kol">KOL</span>':''}<span class="badge b-band">${u.band}</span></div>`;
   const confM=u.gap?'<span class="conf conf-m">中置信</span>':'<span class="conf conf-m">中置信</span>';
   return `<div class="glass ucard" data-seg="${u.segKey}" data-ext="${u.extreme}" data-idx="${idx}" data-voice="${u.voice}">
@@ -1057,18 +1073,26 @@ function generate(){
   const btn=document.getElementById('genBtn');btn.disabled=true;
   const wrap=document.getElementById('genWrap');wrap.classList.add('show');
   const bar=document.getElementById('genBar');const pct=document.getElementById('genPct');const txt=document.getElementById('genTxt');
-  USERS=genUsers(N);
-  renderStats();
-  const step=Math.max(1,Math.ceil(N/40));let i=0;
-  const grid=document.getElementById('ugrid');grid.innerHTML='';
-  function chunk(){
-    const end=Math.min(i+step,N);
-    for(;i<end;i++){if(i<200)grid.insertAdjacentHTML('beforeend',cardHTML(USERS[i]));}
-    const p=Math.round(i/N*100);bar.style.width=p+'%';pct.textContent=p+'%';txt.textContent='正在生成虚拟用户… '+i+' / '+N;
-    if(i<N)requestAnimationFrame(chunk);
-    else{txt.textContent='生成完成 · 共 '+N+' 张虚拟用户卡';btn.disabled=false;renderGrid();showResultsReady();}
+  try{
+    USERS=genUsers(N);
+    renderStats();
+    const step=Math.max(1,Math.ceil(N/40));let i=0;
+    const grid=document.getElementById('ugrid');grid.innerHTML='';
+    function chunk(){
+      try{
+        const end=Math.min(i+step,N);
+        for(;i<end;i++){if(i<200)grid.insertAdjacentHTML('beforeend',cardHTML(USERS[i],i));}
+        const p=Math.round(i/N*100);bar.style.width=p+'%';pct.textContent=p+'%';txt.textContent='正在生成虚拟用户… '+i+' / '+N;
+        if(i<N)requestAnimationFrame(chunk);
+        else{txt.textContent='生成完成 · 共 '+N+' 张虚拟用户卡';btn.disabled=false;renderGrid();showResultsReady();}
+      }catch(err){txt.textContent='生成失败：'+err.message;btn.disabled=false;console.error(err);}
+    }
+    chunk();
+  }catch(err){
+    txt.textContent='生成失败：'+err.message;
+    btn.disabled=false;
+    console.error(err);
   }
-  chunk();
 }
 
 /* ===== AI 增强模式（OpenAI 兼容，provider 可配） ===== */
