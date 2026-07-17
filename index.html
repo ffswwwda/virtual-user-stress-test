@@ -159,6 +159,7 @@ body.light .agg{border-color:var(--border-l)}
 .concerns .cc b{color:#fca5a5}
 .note{font-size:12px;color:var(--tm);margin-top:10px;line-height:1.6}
 .foot{margin-top:80px;text-align:center;font-size:12.5px;color:var(--tm);line-height:1.7}
+.nav-pg.on{background:var(--grad);color:#fff;border-color:transparent}
 @media(max-width:980px){.cols-4{grid-template-columns:repeat(2,1fr)}.cols-3{grid-template-columns:1fr}.stats{grid-template-columns:repeat(2,1fr)}.cmp{grid-template-columns:1fr}.cmp .mid{writing-mode:horizontal-tb}}
 </style>
 </head>
@@ -195,17 +196,20 @@ body.light .agg{border-color:var(--border-l)}
 <nav class="navbar">
   <div class="brand"><div class="brand-logo"><svg class="ic-svg"><use href="#w-fish"/></svg></div>虚拟用户压力测试</div>
   <div class="nav-right">
-    <a class="nav-link" href="https://ffswwwda.github.io/user-research-console/" target="_blank" rel="noopener">预测世界 ↗</a>
+    <a class="nav-link nav-pg on" data-page="intro" href="#">介绍</a>
+    <a class="nav-link nav-pg" data-page="console" href="#">工作台</a>
+    <a class="nav-link" href="https://ffswwwda.github.io/user-research-console/" target="_blank" rel="noopener">预测世界</a>
     <button class="theme-toggle" id="themeBtn" aria-label="切换主题"><svg class="ic-svg"><use href="#i-sun"/></svg></button>
   </div>
 </nav>
 
 <div class="wrap">
+  <section class="page" id="page-intro">
   <section class="hero">
     <h1>在上市之前，先让<span class="g"> 100 个虚拟用户</span><br>替你把产品 / 内容试一遍</h1>
     <p>基于你真实的 VOC 数据源头，用成熟的理论分布生成一群「会说、会做、会想」的虚拟用户，再丢进社媒传播、新品上架等场景里做压力测试——上市前就发现极端反应、被拒风险与沉默的大多数。</p>
     <div class="cta">
-      <button class="btn btn-primary" onclick="document.getElementById('console').scrollIntoView({behavior:'smooth'})"><svg class="ic-svg" style="width:18px;height:18px;margin-right:8px;vertical-align:-3px"><use href="#i-zap"/></svg>开始生成虚拟用户</button>
+      <button class="btn btn-primary" onclick="showPage('console')"><svg class="ic-svg" style="width:18px;height:18px;margin-right:8px;vertical-align:-3px"><use href="#i-zap"/></svg>开始生成虚拟用户</button>
       <a class="btn btn-sec" href="#logic">了解我们的逻辑</a>
     </div>
   </section>
@@ -283,6 +287,23 @@ body.light .agg{border-color:var(--border-l)}
     <p class="note">一句话：<b style="color:var(--tp)">压力测试 = 找用户来试（看漏洞）</b>，<b style="color:var(--tp)">预测世界 = 看市场怎么跑（看结果）</b>。先用压力测试排雷，再用预测世界估量，是更稳的研发节奏。</p>
   </section>
 
+  </section>
+
+  <section class="section" id="boundary">
+    <div class="sec-head">
+      <div class="kicker"><svg class="ic-svg"><use href="#i-alert"/></svg>BOUNDARY · 能力边界</div>
+      <h2>什么能测，什么不能，什么前置后可测</h2>
+      <p>工具诚实地划清边界：态度与需求可压力测试；真人体验不可虚拟化；但真实体验反馈可作为锚定输入被复用。这也是虚拟用户卡「锚定层真实 / 生成层带置信度」设计哲学的直接体现。</p>
+    </div>
+    <div class="grid cols-3">
+      <div class="glass card"><div class="ic" style="background:linear-gradient(135deg,#10b981,#00d4ff)"><svg class="ic-svg"><use href="#i-check"/></svg></div><h3>可直接压力测试</h3><p>新品概念测试、功能价值测试、文案 / 卖点反应。虚拟用户基于 VOC 锚定的分群、立场、需求生成反应，确定性可复算。</p></div>
+      <div class="glass card"><div class="ic" style="background:rgba(255,255,255,.12)"><svg class="ic-svg" style="color:#cbd5e1"><use href="#i-alert"/></svg></div><h3>真人体验 · 不可虚拟化</h3><p>使用手感、流畅度、情绪流、生理 / 直觉反应。必须真人真实场景，数据无法生成体感——这是工具的天花板。</p></div>
+      <div class="glass card"><div class="ic" style="background:linear-gradient(135deg,#a855f7,#ff6b9d)"><svg class="ic-svg"><use href="#i-link"/></svg></div><h3>前置真实反馈 → 可测</h3><p>把真人体验反馈描述作为输入（锚定层），虚拟用户群复用它：测普遍性、分群差异、严重度。真实反馈是锚，虚拟人是放大器。</p></div>
+    </div>
+    <p class="note">桥接点：体验不能「由虚拟人体验」，但体验反馈能「被虚拟人复用」。前置输入后，生成时可注入锚定层，让虚拟用户群放大已知体验问题的分布与影响。</p>
+  </section>
+
+  <section class="page" id="page-console" style="display:none">
   <section class="section" id="console">
     <div class="sec-head">
       <div class="kicker"><svg class="ic-svg"><use href="#i-sliders"/></svg>CONSOLE · 生成控制台</div>
@@ -369,6 +390,7 @@ body.light .agg{border-color:var(--border-l)}
       </div>
       <div id="scenOut"></div>
     </div>
+  </section>
   </section>
 
   <div class="foot">
@@ -617,6 +639,14 @@ const cur=document.getElementById('cur'),cg=document.getElementById('curGlow');
 addEventListener('mousemove',e=>{cur.style.left=cg.style.left=e.clientX+'px';cur.style.top=cg.style.top=e.clientY+'px';});
 document.addEventListener('mouseover',e=>{if(e.target.closest('a,button,.ucard,input,select,textarea,.seg'))cur.classList.add('hov');});
 document.addEventListener('mouseout',e=>{if(e.target.closest('a,button,.ucard,input,select,textarea,.seg'))cur.classList.remove('hov');});
+
+function showPage(p){
+  document.querySelectorAll('.page').forEach(s=>s.style.display=(s.id==='page-'+p)?'block':'none');
+  document.querySelectorAll('.nav-pg').forEach(a=>a.classList.toggle('on',a.dataset.page===p));
+  if(p==='console'){const c=document.getElementById('console');if(c)c.scrollIntoView({behavior:'smooth'});}
+  else window.scrollTo({top:0,behavior:'smooth'});
+}
+document.querySelectorAll('.nav-pg').forEach(a=>a.addEventListener('click',e=>{e.preventDefault();showPage(a.dataset.page);}));
 </script>
 </body>
 </html>
