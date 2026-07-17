@@ -171,6 +171,16 @@ body.light .agg{border-color:var(--border-l)}
 .note{font-size:12px;color:var(--tm);margin-top:10px;line-height:1.6}
 .foot{margin-top:80px;text-align:center;font-size:12.5px;color:var(--tm);line-height:1.7}
 .nav-pg.on{background:var(--grad);color:#fff;border-color:transparent}
+.tabs{display:flex;gap:10px;margin:8px 0 4px;flex-wrap:wrap}
+.tab{display:inline-flex;align-items:center;gap:9px;padding:12px 24px;border-radius:13px;font-size:14px;font-weight:700;cursor:none;border:1px solid var(--border);background:transparent;color:var(--ts);font-family:inherit;transition:.3s}
+body.light .tab{border-color:var(--border-l)}
+.tab svg{width:18px;height:18px;color:var(--cyan)}
+.tab:hover{color:var(--tp);background:rgba(255,255,255,.05)}
+body.light .tab:hover{background:rgba(0,0,0,.04)}
+.tab.on{background:var(--grad);color:#fff;border-color:transparent}
+.tab.on svg{color:#fff}
+.tabpane{animation:fade .35s var(--ease)}
+@keyframes fade{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
 @media(max-width:980px){.cols-4{grid-template-columns:repeat(2,1fr)}.cols-3{grid-template-columns:1fr}.stats{grid-template-columns:repeat(2,1fr)}.cmp{grid-template-columns:1fr}.cmp .mid{writing-mode:horizontal-tb}}
 </style>
 </head>
@@ -221,6 +231,8 @@ body.light .agg{border-color:var(--border-l)}
   <div class="brand"><div class="brand-logo"><svg class="ic-svg"><use href="#w-fish"/></svg></div>虚拟用户压力测试</div>
   <div class="nav-right">
     <a class="nav-link nav-pg on" data-page="console" href="#">工作台</a>
+    <a class="nav-link nav-pg" id="navResults" data-page="results" href="#" style="display:none;opacity:.4;cursor:not-allowed">仿真结果</a>
+    <a class="nav-link nav-pg" data-page="principle" href="#">运行原理</a>
     <a class="nav-link nav-pg" data-page="intro" href="#">介绍</a>
     <a class="nav-link" href="https://ffswwwda.github.io/user-research-console/" target="_blank" rel="noopener">预测世界</a>
     <button class="theme-toggle" id="themeBtn" aria-label="切换主题"><svg class="ic-svg"><use href="#i-sun"/></svg></button>
@@ -331,6 +343,73 @@ body.light .agg{border-color:var(--border-l)}
     <p class="note">桥接点：体验不能「由虚拟人体验」，但体验反馈能「被虚拟人复用」。前置输入后，生成时可注入锚定层，让虚拟用户群放大已知体验问题的分布与影响。</p>
   </section>
 
+  <section class="page" id="page-principle" style="display:none">
+    <section class="section">
+      <div class="sec-head">
+        <div class="kicker"><svg class="ic-svg"><use href="#i-book"/></svg>PRINCIPLE · 运行原理</div>
+        <h2>压力测试引擎是怎么算的</h2>
+        <p>本工具不是「随机抽几条评价拼上去」，而是有四层可解释内核：场景被拆成属性，用户从 VOC 锚定真实原话，再用理论权重做匹配与立场推断，最后给出带归因的结果。下面逐层说明（当前版本为纯规则实现，LLM 增强作为可叠加的后续层）。</p>
+      </div>
+
+      <div class="grid cols-4">
+        <div class="glass card"><div class="ic"><svg class="ic-svg"><use href="#w-sliders"/></svg></div><div class="num">01</div><h3>场景分解</h3><p>把你的自由描述拆成结构化属性：价格点、核心卖点、品类、场景类型、渠道。纯规则即可完成 80%（正则 + 词典）。</p></div>
+        <div class="glass card"><div class="ic"><svg class="ic-svg"><use href="#w-doc"/></svg></div><div class="num">02</div><h3>用户画像深化</h3><p>从原始 VOC 预计算结构化字段：参考价、痛点词、需求标签、强度分、竞品偏向。锚定层始终真实。</p></div>
+        <div class="glass card"><div class="ic"><svg class="ic-svg"><use href="#w-target"/></svg></div><div class="num">03</div><h3>匹配引擎 ★内核</h3><p>计算每个用户 × 场景的「相关度 + 价格敏感度 + 立场概率」，并归因驱动因子。这是整个系统的核心。</p></div>
+        <div class="glass card"><div class="ic"><svg class="ic-svg"><use href="#w-flask"/></svg></div><div class="num">04</div><h3>响应生成</h3><p>输出立场、置信度、驱动因子、风险标注、相关度。纯规则给结构；LLM 可叠加原创叙事。</p></div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="sec-head">
+        <div class="kicker"><svg class="ic-svg"><use href="#i-zap"/></svg>CORE · 核心匹配逻辑</div>
+        <h2>一条虚拟用户，如何对场景表态</h2>
+        <p>对每个用户，引擎做三件事：先看「这条评价跟你说的场景相不相关」，再看「价格差多少」，最后加权算出立场概率并归因。不相关的评价会被降权，不会硬塞进结果。</p>
+      </div>
+      <div class="glass ctrl" style="padding:26px 30px">
+        <div class="ctrl-head" style="border-top:none;padding-top:0"><svg class="ic-svg"><use href="#w-bar"/></svg>相关度评分</div>
+        <p class="hint" style="margin-bottom:14px">把场景关键词（如「静音 / 噪音 / 安静」）与用户的痛点词、需求标签、原话做集合交集；命中越多越相关。完全不命中的评价 → 相关度近 0，不参与反对判定。</p>
+        <div class="ctrl-head"><svg class="ic-svg"><use href="#w-sliders"/></svg>价格敏感度</div>
+        <p class="hint" style="margin-bottom:14px">从原话提取参考价（如「才 30 不到」→30）。场景价与参考价的偏差越大，价格反对越强；未提参考价则标记为「价格未知」。</p>
+        <div class="ctrl-head"><svg class="ic-svg"><use href="#w-target"/></svg>立场概率（加权公式）</div>
+        <p class="hint" style="margin-bottom:0">P(反对) = w₁·星级反向 + w₂·相关度×负面 + w₃·价格偏差 + w₄·情绪标签。置信度即概率值；再按「影响力×强度」排风险，高风险优先展示。</p>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="sec-head">
+        <div class="kicker"><svg class="ic-svg"><use href="#i-alert"/></svg>BOUND · 纯规则能做到 / 不能</div>
+        <h2>纯规则下的能力边界</h2>
+        <p>当前不接大模型也能做的，以及必须 LLM 才能做的——诚实列出，决定了结果的可信度。</p>
+      </div>
+      <div class="cmp">
+        <div class="glass col">
+          <span class="tag" style="background:rgba(16,185,129,.18);color:#6ee7b7">纯规则即可</span>
+          <h3><svg class="ic-svg" style="color:#6ee7b7"><use href="#w-check"/></svg>立即可实现</h3>
+          <ul>
+            <li><svg class="ic-svg" style="color:#6ee7b7"><use href="#w-check"/></svg>场景关键词 / 价格 / 卖点正则提取</li>
+            <li><svg class="ic-svg" style="color:#6ee7b7"><use href="#w-check"/></svg>VOC 预处理构建关键词索引与参考价</li>
+            <li><svg class="ic-svg" style="color:#6ee7b7"><use href="#w-check"/></svg>相关性过滤（无关评价不混入）</li>
+            <li><svg class="ic-svg" style="color:#6ee7b7"><use href="#w-check"/></svg>价格敏感性评分 + 公式立场概率</li>
+            <li><svg class="ic-svg" style="color:#6ee7b7"><use href="#w-check"/></svg>驱动因子归因 + 风险排序 + 聚合洞察</li>
+          </ul>
+        </div>
+        <div class="mid">VS</div>
+        <div class="glass col">
+          <span class="tag" style="background:rgba(168,85,247,.18);color:#d8b4fe">需 LLM 增强</span>
+          <h3><svg class="ic-svg" style="color:#d8b4fe"><use href="#w-link"/></svg>后续可叠加</h3>
+          <ul>
+            <li><svg class="ic-svg" style="color:#d8b4fe"><use href="#w-link"/></svg>语义等价推理（「静音」≈「室友听到」）</li>
+            <li><svg class="ic-svg" style="color:#d8b4fe"><use href="#w-link"/></svg>以用户口吻写的原创模拟叙事</li>
+            <li><svg class="ic-svg" style="color:#d8b4fe"><use href="#w-link"/></svg>反事实推演（降价后反对率降多少）</li>
+            <li><svg class="ic-svg" style="color:#d8b4fe"><use href="#w-link"/></svg>反讽 / 言外之意检测</li>
+            <li><svg class="ic-svg" style="color:#d8b4fe"><use href="#w-link"/></svg>群体动力学（用户间立场传染）</li>
+          </ul>
+        </div>
+      </div>
+      <p class="note">说明：当前线上版本为纯规则内核，已能完成左侧全部能力。结果页的「生成结果 / 用户群体」两个板块即由此引擎驱动；LLM 增强作为可选后续层，不改动既有视觉与交互。</p>
+    </section>
+  </section>
+
   <section class="page" id="page-console">
   <section class="section" id="console">
     <div class="sec-head">
@@ -400,35 +479,64 @@ body.light .agg{border-color:var(--border-l)}
       </div>
     </div>
 
-    <div id="resultArea" style="margin-top:30px;display:none">
-      <div class="stats" id="stats"></div>
-      <div class="glass" style="padding:18px;margin-bottom:18px">
-        <div class="distbar" id="distBar"></div>
-        <div class="sum-line" id="distLegend" style="margin-top:8px"></div>
+    <div id="genHint" class="glass" style="margin-top:30px;padding:24px 26px;display:none">
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+        <div class="demobanner" style="flex:1;margin:0;min-width:240px">
+          <div class="di"><svg class="ic-svg"><use href="#w-check"/></svg></div>
+          <div>群体已生成。结果已整理到「<b>仿真结果</b>」页——可在那里查看生成结果（用户群体 / 数据看板）并运行压力测试。</div>
+        </div>
+        <button class="btn btn-primary" onclick="showPage('results')" style="white-space:nowrap"><svg class="ic-svg" style="width:18px;height:18px;margin-right:8px;vertical-align:-3px"><use href="#i-flask"/></svg>查看仿真结果</button>
       </div>
-      <div class="filters">
-        <select id="fSeg"><option value="">全部分群</option></select>
-        <label style="font-size:13px;color:var(--ts);display:flex;align-items:center;gap:6px"><input type="checkbox" id="fExt">仅看极端用户</label>
-        <input type="text" id="fSearch" placeholder="搜索原话关键词…" style="flex:1;min-width:180px">
-        <span id="fCount" style="font-size:13px;color:var(--ts)"></span>
-      </div>
-      <div class="ugrid" id="ugrid"></div>
-    </div>
-
-    <div class="glass scen" id="scenPanel" style="display:none">
-      <div class="sec-head" style="margin-bottom:6px"><div class="kicker"><svg class="ic-svg"><use href="#i-flask"/></svg>STRESS TEST · 压力测试</div><h2 style="font-size:21px">把这群用户丢进场景里</h2></div>
-      <div class="srow">
-        <select id="scenSel">
-          <option value="social">社媒内容传播</option>
-          <option value="launch">新品上架</option>
-          <option value="promo">优惠活动</option>
-        </select>
-        <input type="text" id="scenBrief" placeholder="可选：一句话描述内容 / 卖点，如「199 元平替精华，主打成分科普」">
-        <button class="btn btn-primary" onclick="runStress()" style="padding:11px 22px;font-size:14px">运行压力测试</button>
-      </div>
-      <div id="scenOut"></div>
     </div>
   </section>
+  </section>
+
+  <section class="page" id="page-results" style="display:none">
+    <section class="section">
+      <div class="sec-head">
+        <div class="kicker"><svg class="ic-svg"><use href="#i-flask"/></svg>RESULTS · 仿真结果</div>
+        <h2>生成结果与用户群体</h2>
+        <p>这里是这群虚拟用户的计算产物。在两个板块间切换：<b>生成结果</b>（群体统计看板 + 压力测试结论），<b>用户群体</b>（逐张虚拟用户卡，可筛选分群 / 极端 / 搜索原话）。</p>
+      </div>
+
+      <div class="tabs" id="resTabs">
+        <button class="tab on" data-tab="gen"><svg class="ic-svg"><use href="#w-bar"/></svg>生成结果</button>
+        <button class="tab" data-tab="group"><svg class="ic-svg"><use href="#w-users"/></svg>用户群体</button>
+      </div>
+
+      <div class="tabpane" id="tab-gen">
+        <div id="resultArea" style="margin-top:24px">
+          <div class="stats" id="stats"></div>
+          <div class="glass" style="padding:18px;margin-bottom:18px">
+            <div class="distbar" id="distBar"></div>
+            <div class="sum-line" id="distLegend" style="margin-top:8px"></div>
+          </div>
+        </div>
+        <div class="glass scen" id="scenPanel">
+          <div class="sec-head" style="margin-bottom:6px"><div class="kicker"><svg class="ic-svg"><use href="#i-flask"/></svg>STRESS TEST · 压力测试</div><h2 style="font-size:21px">把这群用户丢进场景里</h2></div>
+          <div class="srow">
+            <select id="scenSel">
+              <option value="social">社媒内容传播</option>
+              <option value="launch">新品上架</option>
+              <option value="promo">优惠活动</option>
+            </select>
+            <input type="text" id="scenBrief" placeholder="可选：一句话描述内容 / 卖点，如「199 元平替精华，主打成分科普」">
+            <button class="btn btn-primary" onclick="runStress()" style="padding:11px 22px;font-size:14px">运行压力测试</button>
+          </div>
+          <div id="scenOut"></div>
+        </div>
+      </div>
+
+      <div class="tabpane" id="tab-group" style="display:none">
+        <div class="filters" style="margin-top:24px">
+          <select id="fSeg"><option value="">全部分群</option></select>
+          <label style="font-size:13px;color:var(--ts);display:flex;align-items:center;gap:6px"><input type="checkbox" id="fExt">仅看极端用户</label>
+          <input type="text" id="fSearch" placeholder="搜索原话关键词…" style="flex:1;min-width:180px">
+          <span id="fCount" style="font-size:13px;color:var(--ts)"></span>
+        </div>
+        <div class="ugrid" id="ugrid"></div>
+      </div>
+    </section>
   </section>
 
   <div class="foot">
@@ -650,8 +758,6 @@ function generate(){
   const wrap=document.getElementById('genWrap');wrap.classList.add('show');
   const bar=document.getElementById('genBar');const pct=document.getElementById('genPct');const txt=document.getElementById('genTxt');
   USERS=genUsers(N);
-  document.getElementById('resultArea').style.display='block';
-  document.getElementById('scenPanel').style.display='block';
   renderStats();
   const step=Math.max(1,Math.ceil(N/40));let i=0;
   const grid=document.getElementById('ugrid');grid.innerHTML='';
@@ -660,7 +766,7 @@ function generate(){
     for(;i<end;i++){if(i<200)grid.insertAdjacentHTML('beforeend',cardHTML(USERS[i]));}
     const p=Math.round(i/N*100);bar.style.width=p+'%';pct.textContent=p+'%';txt.textContent='正在生成虚拟用户… '+i+' / '+N;
     if(i<N)requestAnimationFrame(chunk);
-    else{txt.textContent='生成完成 · 共 '+N+' 张虚拟用户卡';btn.disabled=false;renderGrid();document.getElementById('resultArea').scrollIntoView({behavior:'smooth'});}
+    else{txt.textContent='生成完成 · 共 '+N+' 张虚拟用户卡';btn.disabled=false;renderGrid();showResultsReady();}
   }
   chunk();
 }
@@ -702,6 +808,20 @@ function showPage(p){
   if(p==='console'){const c=document.getElementById('console');if(c)c.scrollIntoView({behavior:'smooth'});}
   else window.scrollTo({top:0,behavior:'smooth'});
 }
+
+function showResultsReady(){
+  const nav=document.getElementById('navResults');
+  nav.style.display='';nav.style.opacity='1';nav.style.pointerEvents='auto';nav.style.cursor='pointer';
+  const hint=document.getElementById('genHint');
+  if(hint)hint.style.display='block';
+}
+
+function switchResTab(tab){
+  document.querySelectorAll('#resTabs .tab').forEach(b=>b.classList.toggle('on',b.dataset.tab===tab));
+  document.getElementById('tab-gen').style.display=tab==='gen'?'block':'none';
+  document.getElementById('tab-group').style.display=tab==='group'?'block':'none';
+}
+document.querySelectorAll('#resTabs .tab').forEach(b=>b.addEventListener('click',()=>switchResTab(b.dataset.tab)));
 document.querySelectorAll('.nav-pg').forEach(a=>a.addEventListener('click',e=>{e.preventDefault();showPage(a.dataset.page);}));
 </script>
 </body>
