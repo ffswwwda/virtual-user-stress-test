@@ -78,6 +78,10 @@ body.light .card .num{color:rgba(0,0,0,.05)}
 .ctrl .row{display:flex;align-items:center;justify-content:space-between;gap:18px;padding:16px 0;border-bottom:1px solid var(--border)}
 body.light .ctrl .row{border-color:var(--border-l)}
 .ctrl .row:last-child{border-bottom:none}
+.ctrl-head{display:flex;align-items:center;gap:9px;margin:4px 0 2px;padding-top:20px;border-top:1px solid var(--border);font-size:12px;font-weight:800;letter-spacing:.6px;color:var(--cyan);text-transform:uppercase}
+body.light .ctrl-head{border-top-color:var(--border-l)}
+.ctrl-head:first-of-type{border-top:none;padding-top:0}
+.ctrl-head svg{width:16px;height:16px}
 .ctrl label{font-size:14px;font-weight:600}
 .ctrl .hint{font-size:12px;color:var(--tm);margin-top:3px}
 .ctrl input[type=number]{width:90px;background:rgba(255,255,255,.06);border:1px solid var(--border);color:var(--tp);border-radius:9px;padding:8px 10px;font-size:14px;font-family:inherit}
@@ -196,6 +200,19 @@ body.light .agg{border-color:var(--border-l)}
   <symbol id="i-moon" viewBox="0 0 24 24" fill="none" stroke="url(#uiGrad)" stroke-width="2"><path d="M21 12.8A8.5 8.5 0 1 1 11.2 3 6.6 6.6 0 0 0 21 12.8z"/></symbol>
   <symbol id="w-fish" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M2 12c2.5-4 8-6 13-6 1.8 0 3.5.6 5 1.6L22 8v8l-2-1.6c-1.5 1-3.2 1.6-5 1.6-5 0-10.5-2-13-6z"/><circle cx="14" cy="11" r="1" fill="#1a1030"/></symbol>
   <symbol id="w-flask" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 3h4M10.5 3v6l-5 9a2 2 0 0 0 1.8 3h11.4a2 2 0 0 0 1.8-3l-5-9V3"/><path d="M7.5 15h9"/></symbol>
+  <!-- 白色图标（currentColor）：放在渐变底色方块上的卡/特性/品牌图标 -->
+  <symbol id="w-doc" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M9 13h6M9 17h4"/></symbol>
+  <symbol id="w-sliders" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="8" x2="20" y2="8"/><circle cx="9" cy="8" r="2.4"/><line x1="4" y1="16" x2="20" y2="16"/><circle cx="15" cy="16" r="2.4"/></symbol>
+  <symbol id="w-layers" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3 3 8l9 5 9-5z"/><path d="M3 13l9 5 9-5"/></symbol>
+  <symbol id="w-bar" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 20h16"/><rect x="6" y="11" width="3" height="9" rx="1"/><rect x="11" y="6" width="3" height="14" rx="1"/><rect x="16" y="14" width="3" height="6" rx="1"/></symbol>
+  <symbol id="w-target" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.6" fill="currentColor"/></symbol>
+  <symbol id="w-zap" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 4 14 11 14 11 22 20 10 13 10 13 2"/></symbol>
+  <symbol id="w-users" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 19c0-3 2.5-5 5.5-5s5.5 2 5.5 5"/><path d="M15.5 5.2a3.2 3.2 0 0 1 0 5.6"/><path d="M17 19c0-2.3-1.2-4.2-3-5"/></symbol>
+  <symbol id="w-link" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 13a5 5 0 0 0 7 0l2-2a5 5 0 0 0-7-7l-1 1"/><path d="M15 11a5 5 0 0 0-7 0l-2 2a5 5 0 0 0 7 7l1-1"/></symbol>
+  <symbol id="w-alert" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3 2 20h20z"/><path d="M12 9v5M12 17h.01"/></symbol>
+  <symbol id="w-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6 9 17l-5-5"/></symbol>
+  <symbol id="w-compass" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><polygon points="15.5 8.5 11 11 8.5 15.5 13 13"/></symbol>
+  <symbol id="w-book" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 5a2 2 0 0 1 2-2h12v18H6a2 2 0 0 0-2 2z"/><path d="M4 19a2 2 0 0 1 2-2h12"/></symbol>
 </svg>
 <div class="cur" id="cur"></div>
 <div class="cur-glow" id="curGlow"></div>
@@ -203,15 +220,15 @@ body.light .agg{border-color:var(--border-l)}
 <nav class="navbar">
   <div class="brand"><div class="brand-logo"><svg class="ic-svg"><use href="#w-fish"/></svg></div>虚拟用户压力测试</div>
   <div class="nav-right">
-    <a class="nav-link nav-pg on" data-page="intro" href="#">介绍</a>
-    <a class="nav-link nav-pg" data-page="console" href="#">工作台</a>
+    <a class="nav-link nav-pg on" data-page="console" href="#">工作台</a>
+    <a class="nav-link nav-pg" data-page="intro" href="#">介绍</a>
     <a class="nav-link" href="https://ffswwwda.github.io/user-research-console/" target="_blank" rel="noopener">预测世界</a>
     <button class="theme-toggle" id="themeBtn" aria-label="切换主题"><svg class="ic-svg"><use href="#i-sun"/></svg></button>
   </div>
 </nav>
 
 <div class="wrap">
-  <section class="page" id="page-intro">
+  <section class="page" id="page-intro" style="display:none">
   <section class="hero">
     <h1>在上市之前，先让<span class="g"> 100 个虚拟用户</span><br>替你把产品 / 内容试一遍</h1>
     <p>基于你真实的 VOC 数据源头，用成熟的理论分布生成一群「会说、会做、会想」的虚拟用户，再丢进社媒传播、新品上架等场景里做压力测试——上市前就发现极端反应、被拒风险与沉默的大多数。</p>
@@ -220,7 +237,7 @@ body.light .agg{border-color:var(--border-l)}
       <a class="btn btn-sec" href="#logic">了解我们的逻辑</a>
     </div>
     <div class="glass demobanner">
-      <div class="di"><svg class="ic-svg"><use href="#i-doc"/></svg></div>
+      <div class="di"><svg class="ic-svg"><use href="#w-doc"/></svg></div>
       <div><b>内置真实示例数据集</b>：飞机杯·淋浴支架 真实 VOC（美亚欧亚汇总 · 3 星及以下，共 1731 条评价 / 158 个 ASIN）。源头整体偏负面，正好用来演示「上市前挑刺」压力测试。进入工作台可切换内置通用样本，或粘贴你自己的 VOC JSON 覆盖。</div>
     </div>
   </section>
@@ -232,10 +249,10 @@ body.light .agg{border-color:var(--border-l)}
       <p>不是随机捏人，而是「真实锚定 + 理论分布 + 双层卡片」四步闭环。每一个虚拟用户都能追到它在真实 VOC 里的出处。</p>
     </div>
     <div class="grid cols-4">
-      <div class="glass card"><div class="ic"><svg class="ic-svg"><use href="#i-doc"/></svg></div><div class="num">01</div><h3>提取源头</h3><p>导入你的 VOC / 用户反馈 JSON，提取分群、原话、情绪、JTBD、痛点与需求。</p></div>
-      <div class="glass card"><div class="ic"><svg class="ic-svg"><use href="#i-sliders"/></svg></div><div class="num">02</div><h3>理论分布生成</h3><p>按 Rogers 采纳曲线 + von Hippel 领先用户 + Pareto 影响力，决定这 100 人长什么样。</p></div>
-      <div class="glass card"><div class="ic"><svg class="ic-svg"><use href="#i-layers"/></svg></div><div class="num">03</div><h3>双层用户卡</h3><p>锚定层（真实原话/分群）必须准确；生成层（私态度/动作/人口代理）带置信度，不幻觉身份。</p></div>
-      <div class="glass card"><div class="ic"><svg class="ic-svg"><use href="#i-flask"/></svg></div><div class="num">04</div><h3>场景压力测试</h3><p>把用户群丢进社媒传播 / 新品上架，看谁支持、谁反对、谁沉默，输出风险清单。</p></div>
+      <div class="glass card"><div class="ic"><svg class="ic-svg"><use href="#w-doc"/></svg></div><div class="num">01</div><h3>提取源头</h3><p>导入你的 VOC / 用户反馈 JSON，提取分群、原话、情绪、JTBD、痛点与需求。</p></div>
+      <div class="glass card"><div class="ic"><svg class="ic-svg"><use href="#w-sliders"/></svg></div><div class="num">02</div><h3>理论分布生成</h3><p>按 Rogers 采纳曲线 + von Hippel 领先用户 + Pareto 影响力，决定这 100 人长什么样。</p></div>
+      <div class="glass card"><div class="ic"><svg class="ic-svg"><use href="#w-layers"/></svg></div><div class="num">03</div><h3>双层用户卡</h3><p>锚定层（真实原话/分群）必须准确；生成层（私态度/动作/人口代理）带置信度，不幻觉身份。</p></div>
+      <div class="glass card"><div class="ic"><svg class="ic-svg"><use href="#w-flask"/></svg></div><div class="num">04</div><h3>场景压力测试</h3><p>把用户群丢进社媒传播 / 新品上架，看谁支持、谁反对、谁沉默，输出风险清单。</p></div>
     </div>
   </section>
 
@@ -246,10 +263,10 @@ body.light .agg{border-color:var(--border-l)}
       <p>「100 人里 10% 极端、50% 无所谓」背后，是四套成熟的行为科学理论。它们共同决定了生成的虚拟用户群如何分布、谁该被重点对待。</p>
     </div>
     <div class="grid cols-2">
-      <div class="glass card"><div class="ic"><svg class="ic-svg"><use href="#i-bar"/></svg></div><h3>Rogers 创新扩散理论</h3><p>采纳者天然呈钟形偏态五档：创新者 2.5% / 早期采纳 13.5% / 早期大众 34% / 晚期大众 34% / 落后者 16%。它决定了「这 100 人里，多少人会动」。<br><b style="color:var(--tp)">用在哪：</b>默认群体分布形态。</p></div>
-      <div class="glass card"><div class="ic"><svg class="ic-svg"><use href="#i-target"/></svg></div><h3>von Hippel 领先用户理论</h3><p>极端 / 领先用户当下的需求，往往是主流市场未来的需求。所以约 10% 的极端用户不是噪声，而是信号——他们定义产品下一步。<br><b style="color:var(--tp)">用在哪：</b>极端用户标记与需求前瞻。</p></div>
-      <div class="glass card"><div class="ic"><svg class="ic-svg"><use href="#i-zap"/></svg></div><h3>Pareto / Heavy-Half</h3><p>哪怕落后者占 16%，真正驱动传播的是前 15%+ 的领先 / 早期采纳者。因此每个用户携带「影响力权重」，不是均匀 1。<br><b style="color:var(--tp)">用在哪：</b>仿真时的带动力与聚合显著性。</p></div>
-      <div class="glass card"><div class="ic"><svg class="ic-svg"><use href="#i-users"/></svg></div><h3>Ajzen 计划行为 + 社会期望</h3><p>人「说的」和「私下想的 / 真正做的」常有 gap（say-do gap）。所以卡片分「公开声音（真实）」与「私态度（生成）」，私态度才是动作预测的依据。<br><b style="color:var(--tp)">用在哪：</b>生成层的私态度与动作倾向。</p></div>
+      <div class="glass card"><div class="ic"><svg class="ic-svg"><use href="#w-bar"/></svg></div><h3>Rogers 创新扩散理论</h3><p>采纳者天然呈钟形偏态五档：创新者 2.5% / 早期采纳 13.5% / 早期大众 34% / 晚期大众 34% / 落后者 16%。它决定了「这 100 人里，多少人会动」。<br><b style="color:var(--tp)">用在哪：</b>默认群体分布形态。</p></div>
+      <div class="glass card"><div class="ic"><svg class="ic-svg"><use href="#w-target"/></svg></div><h3>von Hippel 领先用户理论</h3><p>极端 / 领先用户当下的需求，往往是主流市场未来的需求。所以约 10% 的极端用户不是噪声，而是信号——他们定义产品下一步。<br><b style="color:var(--tp)">用在哪：</b>极端用户标记与需求前瞻。</p></div>
+      <div class="glass card"><div class="ic"><svg class="ic-svg"><use href="#w-zap"/></svg></div><h3>Pareto / Heavy-Half</h3><p>哪怕落后者占 16%，真正驱动传播的是前 15%+ 的领先 / 早期采纳者。因此每个用户携带「影响力权重」，不是均匀 1。<br><b style="color:var(--tp)">用在哪：</b>仿真时的带动力与聚合显著性。</p></div>
+      <div class="glass card"><div class="ic"><svg class="ic-svg"><use href="#w-users"/></svg></div><h3>Ajzen 计划行为 + 社会期望</h3><p>人「说的」和「私下想的 / 真正做的」常有 gap（say-do gap）。所以卡片分「公开声音（真实）」与「私态度（生成）」，私态度才是动作预测的依据。<br><b style="color:var(--tp)">用在哪：</b>生成层的私态度与动作倾向。</p></div>
     </div>
   </section>
 
@@ -260,9 +277,9 @@ body.light .agg{border-color:var(--border-l)}
       <p>凡是「上市 / 投放前，想先知道哪里会翻车」的时刻，都适合先跑一轮虚拟用户压力测试。</p>
     </div>
     <div class="grid cols-3">
-      <div class="glass card"><div class="ic"><svg class="ic-svg"><use href="#i-flask"/></svg></div><h3>新品上市前试用</h3><p>把产品卖点丢给这群虚拟用户，看极端用户会不会挑刺、价格敏感者会不会嫌贵、沉默大多数会不会无感。</p></div>
-      <div class="glass card"><div class="ic"><svg class="ic-svg"><use href="#i-users"/></svg></div><h3>社媒内容挑刺</h3><p>一条内容发出去，谁会转、谁会喷、谁划走？在真实投放前用虚拟用户群预演舆论反应。</p></div>
-      <div class="glass card"><div class="ic"><svg class="ic-svg"><use href="#i-alert"/></svg></div><h3>极端风险发现</h3><p>专门放大领先用户与差评传播者，提前暴露可能被放大的负面叙事与合规 / 舆情隐患。</p></div>
+      <div class="glass card"><div class="ic"><svg class="ic-svg"><use href="#w-flask"/></svg></div><h3>新品上市前试用</h3><p>把产品卖点丢给这群虚拟用户，看极端用户会不会挑刺、价格敏感者会不会嫌贵、沉默大多数会不会无感。</p></div>
+      <div class="glass card"><div class="ic"><svg class="ic-svg"><use href="#w-users"/></svg></div><h3>社媒内容挑刺</h3><p>一条内容发出去，谁会转、谁会喷、谁划走？在真实投放前用虚拟用户群预演舆论反应。</p></div>
+      <div class="glass card"><div class="ic"><svg class="ic-svg"><use href="#w-alert"/></svg></div><h3>极端风险发现</h3><p>专门放大领先用户与差评传播者，提前暴露可能被放大的负面叙事与合规 / 舆情隐患。</p></div>
     </div>
   </section>
 
@@ -307,14 +324,14 @@ body.light .agg{border-color:var(--border-l)}
       <p>工具诚实地划清边界：态度与需求可压力测试；真人体验不可虚拟化；但真实体验反馈可作为锚定输入被复用。这也是虚拟用户卡「锚定层真实 / 生成层带置信度」设计哲学的直接体现。</p>
     </div>
     <div class="grid cols-3">
-      <div class="glass card"><div class="ic" style="background:linear-gradient(135deg,#10b981,#00d4ff)"><svg class="ic-svg"><use href="#i-check"/></svg></div><h3>可直接压力测试</h3><p>新品概念测试、功能价值测试、文案 / 卖点反应。虚拟用户基于 VOC 锚定的分群、立场、需求生成反应，确定性可复算。</p></div>
-      <div class="glass card"><div class="ic" style="background:rgba(255,255,255,.12)"><svg class="ic-svg" style="color:#cbd5e1"><use href="#i-alert"/></svg></div><h3>真人体验 · 不可虚拟化</h3><p>使用手感、流畅度、情绪流、生理 / 直觉反应。必须真人真实场景，数据无法生成体感——这是工具的天花板。</p></div>
-      <div class="glass card"><div class="ic" style="background:linear-gradient(135deg,#a855f7,#ff6b9d)"><svg class="ic-svg"><use href="#i-link"/></svg></div><h3>前置真实反馈 → 可测</h3><p>把真人体验反馈描述作为输入（锚定层），虚拟用户群复用它：测普遍性、分群差异、严重度。真实反馈是锚，虚拟人是放大器。</p></div>
+      <div class="glass card"><div class="ic" style="background:linear-gradient(135deg,#10b981,#00d4ff)"><svg class="ic-svg"><use href="#w-check"/></svg></div><h3>可直接压力测试</h3><p>新品概念测试、功能价值测试、文案 / 卖点反应。虚拟用户基于 VOC 锚定的分群、立场、需求生成反应，确定性可复算。</p></div>
+      <div class="glass card"><div class="ic" style="background:rgba(255,255,255,.12)"><svg class="ic-svg"><use href="#w-alert"/></svg></div><h3>真人体验 · 不可虚拟化</h3><p>使用手感、流畅度、情绪流、生理 / 直觉反应。必须真人真实场景，数据无法生成体感——这是工具的天花板。</p></div>
+      <div class="glass card"><div class="ic" style="background:linear-gradient(135deg,#a855f7,#ff6b9d)"><svg class="ic-svg"><use href="#w-link"/></svg></div><h3>前置真实反馈 → 可测</h3><p>把真人体验反馈描述作为输入（锚定层），虚拟用户群复用它：测普遍性、分群差异、严重度。真实反馈是锚，虚拟人是放大器。</p></div>
     </div>
     <p class="note">桥接点：体验不能「由虚拟人体验」，但体验反馈能「被虚拟人复用」。前置输入后，生成时可注入锚定层，让虚拟用户群放大已知体验问题的分布与影响。</p>
   </section>
 
-  <section class="page" id="page-console" style="display:none">
+  <section class="page" id="page-console">
   <section class="section" id="console">
     <div class="sec-head">
       <div class="kicker"><svg class="ic-svg"><use href="#i-sliders"/></svg>CONSOLE · 生成控制台</div>
@@ -322,6 +339,7 @@ body.light .agg{border-color:var(--border-l)}
       <p>默认采用 Rogers 五档理论分布；也可切换「自定义」用滑杆调各档占比。生成是确定性的（带种子），同样参数得到同样的群体，方便对比不同方案。</p>
     </div>
     <div class="glass ctrl">
+      <div class="ctrl-head"><svg class="ic-svg"><use href="#i-users"/></svg>群体构成</div>
       <div class="row">
         <div><label>群体规模</label><div class="hint">一次生成多少张虚拟用户卡</div></div>
         <input type="number" id="sizeN" value="100" min="10" max="2000" step="10">
@@ -353,6 +371,7 @@ body.light .agg{border-color:var(--border-l)}
           <button data-p="6">强</button>
         </div>
       </div>
+      <div class="ctrl-head"><svg class="ic-svg"><use href="#i-doc"/></svg>数据源头（VOC）</div>
       <div class="row" style="flex-direction:column;align-items:stretch;gap:10px">
         <div><label>数据源头（VOC）</label><div class="hint">默认载入真实示例数据集；可切换为内置通用样本，或粘贴你自己的 VOC JSON 覆盖。示例来源为差评 / 中评源头，整体偏负面，适合演示「上市前挑刺」。</div></div>
         <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
@@ -369,6 +388,7 @@ body.light .agg{border-color:var(--border-l)}
           <button class="btn btn-sec" onclick="document.getElementById('vocIn').value='';loadSource();" style="padding:10px 18px;font-size:13px">恢复当前源</button>
         </div>
       </div>
+      <div class="ctrl-head"><svg class="ic-svg"><use href="#i-zap"/></svg>生成</div>
       <div class="row" style="border-bottom:none">
         <div><label>随机种子</label><div class="hint">相同种子 + 相同参数 = 相同群体（便于对比方案）</div></div>
         <div style="display:flex;align-items:center;gap:10px"><input type="number" id="seedN" value="20260717"><button class="btn btn-sec" onclick="document.getElementById('seedN').value=Math.floor(Math.random()*1e9)" style="padding:8px 14px;font-size:12px">随机</button></div>
@@ -661,7 +681,7 @@ function runStress(){
   out.innerHTML=`
     <div class="note" style="margin:0 0 4px">场景：<b style="color:var(--tp)">${scen.name}</b>${brief?' · 「'+brief+'」':''} · 共 ${N} 位虚拟用户</div>
     <div class="agg"><span class="sup" style="width:${sup/N*100}%">支持 ${sup}</span><span class="neu" style="width:${neu/N*100}%">中立 ${neu}</span><span class="opp" style="width:${opp/N*100}%">反对 ${opp}</span></div>
-    <div class="note">支持率 ${(sup/N*100).toFixed(0)}% · 反对率 ${(opp/N*100).toFixed(0)}%。${opp/N>0.3?'⚠️ 反对占比偏高，建议先调整方案再投放。':opp/N<0.15?'反对可控，方案较为稳健。':'反对中等，关注极端用户叙事。'}</div>
+    <div class="note">支持率 ${(sup/N*100).toFixed(0)}% · 反对率 ${(opp/N*100).toFixed(0)}%。${opp/N>0.3?'<svg class="ic-svg" style="width:14px;height:14px;vertical-align:-2px;color:var(--red)"><use href="#i-alert"/></svg> 反对占比偏高，建议先调整方案再投放。':opp/N<0.15?'反对可控，方案较为稳健。':'反对中等，关注极端用户叙事。'}</div>
     ${concerns.length?`<div class="concerns"><div class="note" style="margin:12px 0 6px">代表性反对声音（压力点）：</div>${concerns.map(c=>`<div class="cc"><b>${c.u.segName}</b>（${c.u.band}）：“${c.u.voice}” → 对该场景偏反对，需关注其${c.u.pain}。</div>`).join('')}</div>`:''}`;
   out.scrollIntoView({behavior:'smooth',block:'nearest'});
 }
