@@ -108,6 +108,26 @@ body.light textarea{background:rgba(0,0,0,.04);border-color:var(--border-l);colo
 .btn-primary:disabled{opacity:.55;cursor:none;transform:none;box-shadow:none}
 .btn-sec{background:transparent;border:1.5px solid rgba(0,212,255,.4);color:var(--cyan)}
 .btn-sec:hover{background:rgba(0,212,255,.1);transform:translateY(-3px)}
+/* 开关滑块 */
+.switch-track{position:relative;width:42px;height:24px;background:rgba(255,255,255,.12);border-radius:20px;transition:background .3s var(--ease);flex-shrink:0}
+.switch-track::after{content:'';position:absolute;top:3px;left:3px;width:18px;height:18px;background:#fff;border-radius:50%;transition:transform .3s var(--ease),box-shadow .3s var(--ease);box-shadow:0 1px 3px rgba(0,0,0,.3)}
+.switch input:checked+.switch-track{background:var(--grad)}
+.switch input:checked+.switch-track::after{transform:translateX(18px);box-shadow:0 1px 4px rgba(0,0,0,.2)}
+.switch-label{font-size:14px;color:var(--ts);font-weight:500;transition:color .3s var(--ease)}
+body.light .switch-track{background:rgba(0,0,0,.1)}
+body.light .switch input:checked+.switch-track{background:var(--grad)}
+/* AI 增强开关按钮（嵌在「生成」区） */
+.ai-switch{appearance:none;-webkit-appearance:none;display:flex;align-items:center;gap:11px;padding:8px 10px 8px 14px;border-radius:30px;background:rgba(255,255,255,.05);border:1.5px solid rgba(255,255,255,.12);cursor:none;font-family:inherit;transition:all .35s var(--ease);width:100%;justify-content:space-between;margin-top:8px}
+.ai-switch:hover{border-color:rgba(168,85,247,.4);background:rgba(168,85,247,.06)}
+.ai-sw-label{display:inline-flex;align-items:center;font-size:14px;font-weight:600;color:var(--ts);transition:color .35s var(--ease)}
+.ai-sw-track{position:relative;width:40px;height:22px;background:rgba(255,255,255,.16);border-radius:20px;transition:background .35s var(--ease);flex-shrink:0}
+.ai-sw-knob{position:absolute;top:3px;left:3px;width:16px;height:16px;background:#fff;border-radius:50%;transition:transform .35s var(--ease),box-shadow .35s var(--ease);box-shadow:0 1px 3px rgba(0,0,0,.4)}
+.ai-switch.on{border-color:rgba(168,85,247,.55);background:rgba(168,85,247,.1)}
+.ai-switch.on .ai-sw-label{color:var(--purple)}
+.ai-switch.on .ai-sw-track{background:var(--grad)}
+.ai-switch.on .ai-sw-knob{transform:translateX(18px)}
+body.light .ai-switch{background:rgba(0,0,0,.04);border-color:rgba(0,0,0,.1)}
+body.light .ai-sw-track{background:rgba(0,0,0,.16)}
 .genbar-wrap{margin-top:20px;display:none}
 .genbar-wrap.show{display:block}
 .genbar-top{display:flex;justify-content:space-between;font-size:13px;color:var(--ts);margin-bottom:8px}
@@ -621,6 +641,33 @@ body.light .tab:hover{background:rgba(0,0,0,.04)}
         <div><label>随机种子</label><div class="hint">相同种子 + 相同参数 = 相同群体（便于对比方案）</div></div>
         <div style="display:flex;align-items:center;gap:10px"><input type="number" id="seedN" value="20260717"><button class="btn btn-sec" onclick="document.getElementById('seedN').value=Math.floor(Math.random()*1e9)" style="padding:8px 14px;font-size:12px">随机</button></div>
       </div>
+      <button class="ai-switch" id="aiSwitchBtn" onclick="toggleAISwitch()" type="button">
+        <span class="ai-sw-label">
+          <svg class="ic-svg" style="width:16px;height:16px;margin-right:7px;vertical-align:-2px"><use href="#i-zap"/></svg>AI 增强
+        </span>
+        <span class="ai-sw-track"><span class="ai-sw-knob"></span></span>
+      </button>
+      <div class="glass" id="aiPanel" style="margin-top:10px;padding:18px 20px;display:none">
+        <div style="display:flex;align-items:center;gap:14px;margin-bottom:14px">
+          <label class="switch" style="display:flex;align-items:center;gap:10px;font-size:14px;cursor:pointer;user-select:none">
+            <input type="checkbox" id="aiToggle" hidden>
+            <span class="switch-track"></span>
+            <span class="switch-label" id="aiStatus">未开启</span>
+          </label>
+        </div>
+        <div id="aiCfg" style="display:none;flex-direction:column;gap:12px">
+          <div style="display:flex;gap:12px;flex-wrap:wrap">
+            <label style="flex:1;min-width:220px;font-size:13px;color:var(--ts)">API Base URL<input type="text" id="aiBase" placeholder="https://api.deepseek.com/v1" value="https://api.deepseek.com/v1" style="width:100%;margin-top:6px"></label>
+            <label style="flex:1;min-width:180px;font-size:13px;color:var(--ts)">模型名<input type="text" id="aiModel" placeholder="deepseek-chat" value="deepseek-chat" style="width:100%;margin-top:6px"></label>
+          </div>
+          <label style="font-size:13px;color:var(--ts)">API Key（仅存本机）<input type="password" id="aiKey" placeholder="sk-..." style="width:100%;margin-top:6px"></label>
+          <div style="display:flex;gap:10px;align-items:center">
+            <button class="btn" onclick="saveAICfg()">保存配置</button>
+            <span id="aiSaveHint" style="font-size:12px;color:var(--tp)"></span>
+          </div>
+        </div>
+        <p class="note" style="margin:10px 0 0">支持任何 OpenAI 兼容端点（DeepSeek / OpenAI / 通义 / 智谱等）。密钥仅存本机浏览器。</p>
+      </div>
       <button class="btn btn-primary" id="genBtn" style="width:100%;margin-top:8px" onclick="generate()"><svg class="ic-svg" style="width:18px;height:18px;margin-right:8px;vertical-align:-3px"><use href="#i-zap"/></svg>生成虚拟用户群</button>
       <div class="genbar-wrap" id="genWrap">
         <div class="genbar-top"><span id="genTxt">正在生成…</span><span id="genPct">0%</span></div>
@@ -638,33 +685,6 @@ body.light .tab:hover{background:rgba(0,0,0,.04)}
       </div>
     </div>
 
-    <section class="section" id="ai-enhance">
-      <div class="sec-head">
-        <div class="kicker"><svg class="ic-svg"><use href="#i-zap"/></svg>AI ENHANCE · AI 增强模式</div>
-        <h2>接入大模型，做规则引擎做不到的深度分析</h2>
-        <p>开启后，压力测试会额外调用你配置的大模型生成「AI 洞察」，并可在结果页自由提问。<b style="color:var(--tp)">密钥仅保存在你本机浏览器</b>（localStorage），不会上传到任何服务器，也不会写进代码仓库。</p>
-      </div>
-      <div class="glass" style="padding:20px 22px">
-        <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
-          <label style="display:flex;align-items:center;gap:9px;font-size:14px;cursor:pointer">
-            <input type="checkbox" id="aiToggle" style="width:17px;height:17px;accent-color:var(--purple)"> 开启 AI 增强模式
-          </label>
-          <span id="aiStatus" style="font-size:13px;color:var(--ts)">未开启</span>
-        </div>
-        <div id="aiCfg" style="display:none;flex-direction:column;gap:12px">
-          <div style="display:flex;gap:12px;flex-wrap:wrap">
-            <label style="flex:1;min-width:220px;font-size:13px;color:var(--ts)">API Base URL<input type="text" id="aiBase" placeholder="https://api.openai.com/v1" style="width:100%;margin-top:6px"></label>
-            <label style="flex:1;min-width:180px;font-size:13px;color:var(--ts)">模型名<input type="text" id="aiModel" placeholder="gpt-4o-mini" style="width:100%;margin-top:6px"></label>
-          </div>
-          <label style="font-size:13px;color:var(--ts)">API Key（仅存本机）<input type="password" id="aiKey" placeholder="sk-..." style="width:100%;margin-top:6px"></label>
-          <div style="display:flex;gap:10px;align-items:center">
-            <button class="btn" onclick="saveAICfg()">保存配置</button>
-            <span id="aiSaveHint" style="font-size:12px;color:var(--tp)"></span>
-          </div>
-        </div>
-        <p class="note" style="margin:12px 0 0">支持任何 OpenAI 兼容端点（OpenAI / DeepSeek / 通义 / 智谱等，格式一致）。Anthropic 需另接适配器，暂未内置。</p>
-      </div>
-    </section>
   </section>
   </section>
 
@@ -726,15 +746,6 @@ body.light .tab:hover{background:rgba(0,0,0,.04)}
           <button class="btn btn-primary" onclick="runStress()" style="padding:11px 22px;font-size:14px">运行压力测试</button>
         </div>
         <div id="scenOut"></div>
-        <div class="glass" id="aiAsk" style="margin-top:18px;padding:16px 18px;display:none">
-          <div class="note" style="margin:0 0 8px"><b style="color:var(--tp)">问 AI（基于这群虚拟用户）</b></div>
-          <textarea id="aiQ" rows="2" placeholder="例如：为什么价格敏感型用户更反对？这批反对最常见的深层动机是什么？" style="width:100%;resize:vertical;font-family:inherit;font-size:13px;padding:10px;border-radius:9px;background:rgba(255,255,255,.04);border:1px solid var(--border);color:var(--t)"></textarea>
-          <div style="display:flex;gap:10px;align-items:center;margin-top:10px">
-            <button class="btn btn-primary" onclick="askAI()">发送提问</button>
-            <span id="aiQHint" style="font-size:12px;color:var(--ts)"></span>
-          </div>
-          <div id="aiA" style="margin-top:12px;font-size:13px;line-height:1.7;color:var(--ts);white-space:pre-wrap"></div>
-        </div>
         <div class="glass" id="aiTheme" style="margin-top:14px;padding:16px 18px;display:none">
           <div class="note" style="margin:0 0 8px"><b style="color:var(--tp)">AI 反对主题解读</b>（基于本次反对用户群体）</div>
           <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
@@ -742,6 +753,16 @@ body.light .tab:hover{background:rgba(0,0,0,.04)}
             <span id="aiThemeHint" style="font-size:12px;color:var(--ts)"></span>
           </div>
           <div id="aiThemeOut" style="margin-top:12px;font-size:13px;line-height:1.7;color:var(--ts);white-space:pre-wrap"></div>
+        </div>
+        <div class="glass" id="aiCalib" style="margin-top:14px;padding:16px 18px;display:none">
+          <div class="note" style="margin:0 0 8px"><b style="color:var(--tp)">AI 增强 · 校准与重排</b>（基于本次压力测试的结构化结果）</div>
+          <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+            <button class="btn btn-primary" onclick="aiCalib1()" style="padding:9px 18px;font-size:13px"><svg class="ic-svg" style="width:16px;height:16px;margin-right:7px;vertical-align:-2px"><use href="#i-zap"/></svg>用 AI 校准结论</button>
+            <button class="btn" onclick="aiCalib2()" style="padding:9px 18px;font-size:13px"><svg class="ic-svg" style="width:16px;height:16px;margin-right:7px;vertical-align:-2px"><use href="#i-sliders"/></svg>用 AI 重排风险</button>
+            <span id="aiCalibHint" style="font-size:12px;color:var(--ts)"></span>
+          </div>
+          <div id="aiCalibOut1" style="margin-top:12px;font-size:13px;line-height:1.7;color:var(--ts);white-space:pre-wrap"></div>
+          <div id="aiCalibOut2" style="margin-top:10px;font-size:13px;line-height:1.7;color:var(--ts);white-space:pre-wrap"></div>
         </div>
       </div>
     </section>
@@ -978,7 +999,7 @@ function genUsers(N){
 function cardHTML(u){
   const badges=`<div class="badges">${u.extreme?'<span class="badge b-ext">极端/领先</span>':''}${u.isKOL?'<span class="badge b-kol">KOL</span>':''}<span class="badge b-band">${u.band}</span></div>`;
   const confM=u.gap?'<span class="conf conf-m">中置信</span>':'<span class="conf conf-m">中置信</span>';
-  return `<div class="glass ucard" data-seg="${u.segKey}" data-ext="${u.extreme}" data-voice="${u.voice}">
+  return `<div class="glass ucard" data-seg="${u.segKey}" data-ext="${u.extreme}" data-idx="${idx}" data-voice="${u.voice}">
     <div class="uh"><div class="who"><div class="av" style="background:${u.color}">${u.segName[0]}</div>
       <div><div class="nm">${u.segName} #${u.id}</div><div class="sb">影响力权重 ${u.influence} · 活跃度 ${(u.activity*100|0)}%</div></div></div>${badges}</div>
     <div class="layer g">
@@ -993,6 +1014,10 @@ function cardHTML(u){
       <div class="kv"><b>私态度</b> ${u.privateLabel}${confM}${u.gap?' · 与公开声音存在 say-do gap':''}</div>
       <div class="kv"><b>人口代理</b> ${u.demo}<span class="conf conf-l">低置信·推断非真实</span></div>
     </div>
+    <div style="display:flex;gap:8px;align-items:center;margin-top:2px">
+      <button class="btn" onclick="aiCard(this)" style="font-size:12px;padding:7px 14px"><svg class="ic-svg" style="width:14px;height:14px;margin-right:6px;vertical-align:-2px"><use href="#i-zap"/></svg>AI 解读</button>
+    </div>
+    <div class="aiCardOut" style="margin-top:8px;font-size:12.5px;line-height:1.6;color:var(--ts);white-space:pre-wrap;display:none"></div>
   </div>`;
 }
 
@@ -1023,7 +1048,7 @@ function renderGrid(){
   const q=document.getElementById('fSearch').value.trim().toLowerCase();
   const list=USERS.filter(u=>(!seg||u.segKey===seg)&&(!ext||u.extreme)&&(!q||(u.voice+u.voiceEN).toLowerCase().includes(q)));
   document.getElementById('fCount').textContent='显示 '+list.length+' / '+USERS.length;
-  document.getElementById('ugrid').innerHTML=list.map(cardHTML).join('');
+  document.getElementById('ugrid').innerHTML=list.map(u=>cardHTML(u, USERS.indexOf(u))).join('');
 }
 ['fSeg','fExt','fSearch'].forEach(id=>document.getElementById(id).addEventListener('input',renderGrid));
 
@@ -1051,12 +1076,12 @@ let lastStressCtx='';
 let lastStressOpp=[];
 function getAICfg(){
   let s={};try{s=JSON.parse(localStorage.getItem('vust_ai_cfg')||'{}');}catch(e){}
-  return {base:s.base||'https://api.openai.com/v1', model:s.model||'gpt-4o-mini', key:s.key||'', on:!!s.on};
+  return {base:s.base||'https://api.deepseek.com/v1', model:s.model||'deepseek-chat', key:s.key||'', on:!!s.on};
 }
 function saveAICfg(){
   const cfg=getAICfg();
-  cfg.base=document.getElementById('aiBase').value.trim()||'https://api.openai.com/v1';
-  cfg.model=document.getElementById('aiModel').value.trim()||'gpt-4o-mini';
+  cfg.base=document.getElementById('aiBase').value.trim()||'https://api.deepseek.com/v1';
+  cfg.model=document.getElementById('aiModel').value.trim()||'deepseek-chat';
   cfg.key=document.getElementById('aiKey').value.trim();
   localStorage.setItem('vust_ai_cfg', JSON.stringify(cfg));
   document.getElementById('aiSaveHint').textContent='已保存（仅本机）';
@@ -1068,8 +1093,21 @@ function refreshAIPanels(){
   const tg=document.getElementById('aiToggle'); if(tg)tg.checked=cfg.on;
   document.getElementById('aiStatus').textContent=cfg.on?(cfg.key?'已开启 · 已配置':'已开启 · 待填密钥'):'未开启';
   document.getElementById('aiCfg').style.display=cfg.on?'flex':'none';
-  const ask=document.getElementById('aiAsk'); if(ask)ask.style.display=(cfg.on&&cfg.key&&USERS.length)?'block':'none';
+  const sw=document.getElementById('aiSwitchBtn');
+  if(sw){sw.classList.toggle('on',!!cfg.on);}
   const th=document.getElementById('aiTheme'); if(th)th.style.display=(cfg.on&&cfg.key&&USERS.length)?'block':'none';
+  const cb=document.getElementById('aiCalib'); if(cb)cb.style.display=(cfg.on&&cfg.key&&USERS.length)?'block':'none';
+}
+function toggleAISwitch(){
+  const cfg=getAICfg();
+  cfg.on=!cfg.on;
+  localStorage.setItem('vust_ai_cfg',JSON.stringify(cfg));
+  // 同步内部隐藏 checkbox
+  const tg=document.getElementById('aiToggle'); if(tg)tg.checked=cfg.on;
+  refreshAIPanels();
+  // 开关打开时自动展开配置面板，关闭时折叠
+  const p=document.getElementById('aiPanel');
+  if(p)p.style.display=cfg.on?'block':'none';
 }
 async function callLLM(system, user){
   const cfg=getAICfg();
@@ -1093,19 +1131,7 @@ function appendAIInsight(t){
   d.innerHTML='<div class="note" style="margin:0 0 8px"><b style="color:var(--purple)">AI 洞察（大模型生成）</b></div><div style="font-size:13.5px;line-height:1.7;color:var(--ts);white-space:pre-wrap">'+escHtml(t)+'</div>';
   out.appendChild(d);
 }
-function askAI(){
-  const cfg=getAICfg();
-  if(!cfg.on||!cfg.key){document.getElementById('aiQHint').textContent='请先在工作台开启 AI 增强模式并保存密钥';return;}
-  const q=document.getElementById('aiQ').value.trim();
-  if(!q){document.getElementById('aiQHint').textContent='请输入问题';return;}
-  const ctx=lastStressCtx||('当前虚拟用户群共 '+USERS.length+' 位，由 VOC 生成。');
-  document.getElementById('aiQHint').textContent='AI 思考中…';
-  callLLM('你是用户研究助手，基于给定的虚拟用户群体数据回答用户问题，尽量引用具体分群与原话，语言简洁。',
-    '群体数据摘要：\n'+ctx+'\n\n用户问题：'+q).then(t=>{
-    document.getElementById('aiQHint').textContent='';
-    document.getElementById('aiA').textContent=t||'（调用失败或模型无返回，请检查密钥 / 模型名 / 网络是否可达）';
-  });
-}
+/* askAI 已移除：AI 不再以独立输入框板块存在，改为现有功能的内联增强（见 aiTheme / aiCalib / aiCard） */
 function aiTheme(){
   const cfg=getAICfg();
   if(!cfg.on||!cfg.key){document.getElementById('aiThemeHint').textContent='请先在工作台开启 AI 增强模式并保存密钥';return;}
@@ -1120,6 +1146,40 @@ function aiTheme(){
     document.getElementById('aiThemeOut').textContent=t||'（调用失败或模型无返回，请检查密钥 / 模型名 / 网络是否可达）';
   });
 }
+function aiCalib1(){
+  const cfg=getAICfg();
+  if(!cfg.on||!cfg.key){document.getElementById('aiCalibHint').textContent='请先在工作台开启 AI 增强模式并保存密钥';return;}
+  if(!lastStressCtx){document.getElementById('aiCalibHint').textContent='请先运行一次压力测试';return;}
+  document.getElementById('aiCalibHint').textContent='AI 校准中…';
+  const sys='你是资深用户研究分析师。下面是一份由规则引擎产出的压力测试结构化结论。请基于真实原话对结论做校准：①重新评估支持/中立/反对的真实占比（规则引擎可能漏判语义反对或误判），给出你的修正估计与理由；②逐条核对「反对主因」归因，指出哪些归因可信、哪些可能不准；③给出一句最该优先修正的洞察。';
+  callLLM(sys, lastStressCtx).then(t=>{
+    document.getElementById('aiCalibHint').textContent='';
+    document.getElementById('aiCalibOut1').textContent=t||'（调用失败或模型无返回，请检查密钥 / 模型名 / 网络是否可达）';
+  });
+}
+function aiCalib2(){
+  const cfg=getAICfg();
+  if(!cfg.on||!cfg.key){document.getElementById('aiCalibHint').textContent='请先在工作台开启 AI 增强模式并保存密钥';return;}
+  if(!lastStressOpp.length){document.getElementById('aiCalibHint').textContent='请先运行一次压力测试';return;}
+  document.getElementById('aiCalibHint').textContent='AI 重排中…';
+  const list=lastStressOpp.map((o,i)=>`${i+1}. [${o.seg}/${o.band}]${o.extreme?'极端':''} 驱动=${o.driverLabel} 风险=${o.risk}：${o.voice}`).join('\n');
+  const sys='你是用户研究分析师。下面是规则引擎按「风险值」排好序的反对用户列表。请结合 KOL/极端属性与话语内容，重新评估每位用户的真实破坏力，给出你重排后的 Top 风险用户（按真实风险降序），并简述重排理由。';
+  callLLM(sys,'规则引擎风险排序：\n'+list).then(t=>{
+    document.getElementById('aiCalibHint').textContent='';
+    document.getElementById('aiCalibOut2').textContent=t||'（调用失败或模型无返回，请检查密钥 / 模型名 / 网络是否可达）';
+  });
+}
+function aiCard(btn){
+  const card=btn.closest('.ucard'); if(!card)return;
+  const u=USERS[+card.dataset.idx]; if(!u)return;
+  const out=card.querySelector('.aiCardOut'); out.style.display='block';
+  const cfg=getAICfg();
+  if(!cfg.on||!cfg.key){out.textContent='请先在工作台开启 AI 增强模式并保存密钥';return;}
+  out.textContent='AI 解读中…';
+  const sys='你是用户研究分析师。下面是一位由 VOC 生成的虚拟用户画像，请基于其真实原话做一轮更精准的解读（130字内）：①最真实的底层动机；②其公开声音与私态度之间是否存在 say-do gap、意味着什么；③对产品/运营的一个具体启示。';
+  const prof=`分群：${u.segName}（${u.band}）${u.extreme?'·极端/领先':''}${u.isKOL?'·KOL':''}\n原话：“${u.voice}”${u.voiceEN?('\n原文：'+u.voiceEN):''}\n情绪：${u.sentiment} · JTBD：${u.jtbd||'—'} · 星级：${u.star||'—'}\n痛点：${u.pain||'—'} · 需求：${u.need||'—'}\n私态度：${u.privateLabel} · 人口代理：${u.demo}`;
+  callLLM(sys, prof).then(t=>{ out.textContent=t||'（调用失败或模型无返回，请检查密钥 / 模型名 / 网络是否可达）'; });
+}
 document.getElementById('aiThemeBtn').addEventListener('click',aiTheme);
 function initAI(){
   const cfg=getAICfg();
@@ -1128,8 +1188,11 @@ function initAI(){
   document.getElementById('aiKey').value=cfg.key;
   document.getElementById('aiToggle').addEventListener('change',e=>{
     const c=getAICfg(); c.on=e.target.checked; localStorage.setItem('vust_ai_cfg',JSON.stringify(c)); refreshAIPanels();
+    const p=document.getElementById('aiPanel'); if(p)p.style.display=c.on?'block':'none';
   });
   refreshAIPanels();
+  // 初始按保存的状态决定面板是否展开
+  const p=document.getElementById('aiPanel'); if(p)p.style.display=cfg.on?'block':'none';
 }
 
 function runStress(){
