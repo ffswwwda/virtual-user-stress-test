@@ -331,6 +331,151 @@ body.light .tab:hover{background:rgba(0,0,0,.04)}
     <p class="note">一句话：<b style="color:var(--tp)">压力测试 = 找用户来试（看漏洞）</b>，<b style="color:var(--tp)">预测世界 = 看市场怎么跑（看结果）</b>。先用压力测试排雷，再用预测世界估量，是更稳的研发节奏。</p>
   </section>
 
+  <section class="section" id="engine-detail">
+    <div class="sec-head">
+      <div class="kicker"><svg class="ic-svg"><use href="#i-layers"/></svg>ENGINE · 运行原理详解</div>
+      <h2>压力测试引擎的四层内核与两种实现路径</h2>
+      <p>本工具的引擎分四层：场景被拆解为属性、用户从 VOC 锚定真实原话并深化画像、再用匹配引擎逐人计算立场概率与驱动因子、最后生成带归因的响应卡。当前线上版本是<b>纯规则前端实现</b>（零后端、零 API 调用）；完整 Skill 版本可叠加 LLM 增强，将语义推理与原创叙事能力接入同一套框架。</p>
+    </div>
+
+    <!-- 四层引擎流程 -->
+    <div class="glass" style="padding:24px 28px;margin-bottom:20px">
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <!-- Input -->
+        <div style="text-align:center;padding:14px;background:rgba(0,212,255,.08);border:1px solid rgba(0,212,255,.2);border-radius:10px;font-size:15px;font-weight:600;color:var(--tp)">
+          Scenario Input · 场景输入<br><span style="font-weight:400;font-size:13px;color:var(--ts)">例：「60 美元飞机杯，主打静音」</span>
+        </div>
+        <!-- Arrow -->
+        <div style="text-align:center;color:var(--ts);font-size:18px;padding:2px">↓</div>
+
+        <!-- L1 -->
+        <div style="padding:18px 22px;background:linear-gradient(135deg,rgba(16,185,129,.10),rgba(0,212,255,.06));border:1px solid rgba(16,185,129,.25);border-radius:12px">
+          <div style="font-weight:700;font-size:15px;color:#6ee7b7;margin-bottom:4px">Layer 1: Scenario Decomposition（场景分解）</div>
+          <div style="font-size:13px;color:var(--ts);margin-bottom:10px">理论：Attribute-Based Conjoint Logic | 将场景拆解为可独立评估的属性维度</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <span class="tag" style="background:rgba(16,185,129,.14);color:#6ee7b7;font-size:12px">价格=$60</span>
+            <span class="tag" style="background:rgba(16,185,129,.14);color:#6ee7b7;font-size:12px">核心=静音</span>
+            <span class="tag" style="background:rgba(16,185,129,.14);color:#6ee7b7;font-size:12px">品类=飞机杯</span>
+            <span class="tag" style="background:rgba(16,185,129,.14);color:#6ee7b7;font-size:12px">场景=新品上架</span>
+            <span class="tag" style="background:rgba(16,185,129,.14);color:#6ee7b7;font-size:12px">渠道暗示=线上</span>
+          </div>
+        </div>
+        <div style="text-align:center;color:var(--ts);font-size:18px;padding:2px">↓</div>
+
+        <!-- L2 -->
+        <div style="padding:18px 22px;background:linear-gradient(135deg,rgba(168,85,247,.10),rgba(0,212,255,.05));border:1px solid rgba(168,85,247,.25);border-radius:12px">
+          <div style="font-weight:700;font-size:15px;color:#d8b4fe;margin-bottom:4px">Layer 2: Persona Profile Enrichment（用户画像深化）</div>
+          <div style="font-size:13px;color:var(--ts);margin-bottom:10px">理论：Reference Dependence (Kahneman) + Protection Motivation Theory</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <span class="tag" style="background:rgba(168,85,247,.14);color:#d8b4fe;font-size:12px">Reference Price 从原话提取参考价</span>
+            <span class="tag" style="background:rgba(168,85,247,.14);color:#d8b4fe;font-size:12px">Pain Keywords 痛点词向量</span>
+            <span class="tag" style="background:rgba(168,85,247,.14);color:#d8b4fe;font-size:12px">Need Alignment 需求×场景匹配度</span>
+            <span class="tag" style="background:rgba(168,85,247,.14);color:#d8b4fe;font-size:12px">Intensity Score 星级+文本强度+标点</span>
+          </div>
+        </div>
+        <div style="text-align:center;color:var(--ts);font-size:18px;padding:2px">↓</div>
+
+        <!-- L3 ★ -->
+        <div style="padding:18px 22px;background:linear-gradient(135deg,rgba(255,107,157,.10),rgba(255,193,7,.06));border:1px solid rgba(255,107,157,.3);border-radius:12px">
+          <div style="font-weight:700;font-size:15px;color:#fca5a5;margin-bottom:4px">Layer 3: Attribute-Persona Matching（核心匹配引擎 ★）</div>
+          <div style="font-size:13px;color:var(--ts);margin-bottom:10px">理论：ELM (精细/启发双路径) + Keyword Overlap Scoring + Star-Calibrated Sentiment</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <span class="tag" style="background:rgba(255,107,157,.14);color:#fca5a5;font-size:12px">Relevance Score 0~1 场景属性 vs 用户关键词重叠率</span>
+            <span class="tag" style="background:rgba(255,107,157,.14);color:#fca5a5;font-size:12px">Stance Probability P(支持/中立/反对)=f(相关度, 星级, 价格)</span>
+            <span class="tag" style="background:rgba(255,107,157,.14);color:#fca5a5;font-size:12px">Response Specificity Level L1泛化 / L2属性级 / L3场景模拟叙事</span>
+          </div>
+        </div>
+        <div style="text-align:center;color:var(--ts);font-size:18px;padding:2px">↓</div>
+
+        <!-- L4 -->
+        <div style="padding:18px 22px;background:linear-gradient(135deg,rgba(0,212,255,.08),rgba(16,185,129,.06));border:1px solid rgba(0,212,255,.2);border-radius:12px">
+          <div style="font-weight:700;font-size:15px;color:#7fe3ff;margin-bottom:4px">Layer 4: Response Generation（响应生成）</div>
+          <div style="font-size:13px;color:var(--ts);margin-bottom:10px">理论：Narrative Coherence（一致性叙事）+ Cognitive Dissonance（竞品偏差修正）</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <span class="tag" style="background:rgba(0,212,255,.12);color:#7fe3ff;font-size:12px">Stance + Confidence</span>
+            <span class="tag" style="background:rgba(0,212,255,.12);color:#7fe3ff;font-size:12px">Key Driver(s)</span>
+            <span class="tag" style="background:rgba(0,212,255,.12);color:#7fe3ff;font-size:12px">Simulated Quote</span>
+            <span class="tag" style="background:rgba(0,212,255,.12);color:#7fe3ff;font-size:12px">Risk Flag</span>
+          </div>
+        </div>
+        <div style="text-align:center;color:var(--ts);font-size:18px;padding:2px">↓</div>
+
+        <!-- Output -->
+        <div style="text-align:center;padding:14px;background:rgba(0,212,255,.08);border:1px solid rgba(0,212,255,.2);border-radius:10px;font-size:14px;color:var(--tp);line-height:1.6">
+          <b>Output: Per-User Reasoned Response Card</b><br>
+          <span style="font-size:13px;color:var(--ts)">价格敏感者#47 | 反对(0.82置信) | 驱动:价格($60 vs 参考$30) + 静音非其关注点<br>模拟叙事：「60块？我之前买的才30不到，而且我根本不在乎声音大小…」| 风险:高影响力×高负面强度</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 纯规则 vs LLM 对照表 -->
+    <div class="sec-head" style="margin-top:28px">
+      <h3 style="font-size:17px">纯规则实现 ↔ 完整 LLM 引擎对照</h3>
+      <p style="font-size:13px">每一层都有「纯规则近似」和「LLM 增强版」两种实现路径。当前线上版本走左侧；右侧为完整 Skill 可叠加层。</p>
+    </div>
+
+    <div class="glass cmp" style="margin-bottom:20px">
+      <div class="col">
+        <span class="tag" style="background:rgba(0,212,255,.12);color:#7fe3ff">Pure-Rules Approximation<br><span style="font-size:11px;font-weight:400;color:var(--ts)">当前线上版本</span></span>
+        <p style="margin:10px 0 6px;font-weight:600;font-size:13px">L1 → 规则：正则+关键词词典</p>
+        <p style="font-size:12px;color:var(--ts);margin-bottom:8px">价格/品类/卖点/场景·预定义模式匹配</p>
+        <p style="margin:10px 0 6px;font-weight:600;font-size:13px">L2 → 规则：结构化字段 + 关键词索引</p>
+        <p style="font-size:12px;color:var(--ts);margin-bottom:8px">price_mentions[], pain_words[], need_tags[], intensity=(star×len+punc)/max</p>
+        <p style="margin:10px 0 6px;font-weight:600;font-size:13px">L3 → 规则：关键词重叠评分</p>
+        <p style="font-size:12px;color:var(--ts);margin-bottom:8px">relevance = overlap(scenario_kw, user_pain+need)<br>price_delta = |scenario_price - ref_price| / ref<br>stance = f(relevance, star, price_delta, sentiment)</p>
+        <p style="margin:10px 0 6px;font-weight:600;font-size:13px">L4 → 规则：模板增强（非随机）</p>
+        <p style="font-size:12px;color:var(--ts)">选最相关的原话片段 + 注入场景上下文<br>driver 标注 = 具体哪个属性触发了反对</p>
+      </div>
+      <div class="mid">⟷</div>
+      <div class="col">
+        <span class="tag" style="background:rgba(168,85,247,.12);color:#d8b4fe">Full LLM Engine (4 Layers)<br><span style="font-size:11px;font-weight:400;color:var(--ts)">完整 Skill 版本</span></span>
+        <p style="margin:10px 0 6px;font-weight:600;font-size:13px">L1：LLM 自然语言理解场景</p>
+        <p style="font-size:12px;color:var(--ts);margin-bottom:8px">自由文本 → 属性提取</p>
+        <p style="margin:10px 0 6px;font-weight:600;font-size:13px">L2：LLM 深度画像推断</p>
+        <p style="font-size:12px;color:var(--ts);margin-bottom:8px">从原语推导：参考价/决策权重<br>心理账户/竞品偏好/使用频率…</p>
+        <p style="margin:10px 0 6px;font-weight:600;font-size:13px">L3：核心匹配引擎（LLM 语义）</p>
+        <p style="font-size:12px;color:var(--ts);margin-bottom:8px">· 语义相似度（embedding cosine）<br>· 多属性效用函数（conjoint）<br>· ELM 路径选择（长评=精细/短评=启发）</p>
+        <p style="margin:10px 0 6px;font-weight:600;font-size:13px">L4：LLM 原创叙事生成</p>
+        <p style="font-size:12px;color:var(--ts)">以该用户口吻生成全新响应<br>含反事实推理、情绪模拟…</p>
+      </div>
+    </div>
+
+    <!-- 能力边界两栏 -->
+    <div class="grid cols-2" style="margin-bottom:16px">
+      <div class="glass card">
+        <div class="ic" style="background:linear-gradient(135deg,#10b981,#00d4ff)"><svg class="ic-svg"><use href="#w-check"/></svg></div>
+        <h3>纯规则能做到的（现在就可实现 ✓）</h3>
+        <ul style="list-style:none;padding:0;margin:8px 0 0;font-size:13px;line-height:1.9">
+          <li><span style="color:#6ee7b7">✓</span> 场景关键词提取（正则/词典）</li>
+          <li><span style="color:#6ee7b7">✓</span> 用户关键词索引（构建时预计算）</li>
+          <li><span style="color:#6ee7b7">✓</span> 相关度评分（集合交集 / TF）</li>
+          <li><span style="color:#6ee7b7">✓</span> 价格敏感度判定（参考价对比）</li>
+          <li><span style="color:#6ee7b7">✓</span> 立场概率（加权公式）</li>
+        </ul>
+      </div>
+      <div class="glass card">
+        <div class="ic" style="background:rgba(255,255,255,.12)"><svg class="ic-svg"><use href="#w-alert"/></svg></div>
+        <h3>纯规则做不到的（需要 LLM ✕）</h3>
+        <ul style="list-style:none;padding:0;margin:8px 0 0;font-size:13px;line-height:1.9">
+          <li><span style="color:#f87171">✕</span> 语义理解（「静音」≈「吵到室友」）</li>
+          <li><span style="color:#f87171">✕</span> 原创叙事（以用户口吻写新话）</li>
+          <li><span style="color:#f87171">✕</span> 反事实推演（「降价30会怎样」）</li>
+          <li><span style="color:#f87171">✕</span> 情绪传染 / 群体动力学</li>
+          <li><span style="color:#f87171">✕</span> 隐含假设推断（言外之意）</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Skill 链接提示 -->
+    <div class="glass demobanner" style="margin-top:4px">
+      <div class="di"><svg class="ic-svg"><use href="#i-book"/></svg></div>
+      <div>
+        <b>完整版 Skill（含 LLM 增强层）</b>：本工具已打包为 WorkBuddy Skill（<code>virtual-user-stress-test</code>），可在专家中心或技能市场安装使用。Skill 版本在纯规则内核之上叠加了 LLM 语义匹配、embedding 相似度、用户口吻叙事生成等能力——左右两侧的实现路径共享同一套四层框架，只是每层的「算子」不同。<br>
+        <span style="font-size:13px;color:var(--ts)">GitHub 仓库：<a href="https://github.com/ffswwwda/virtual-user-stress-test" target="_blank" rel="noopener" style="color:var(--tp)">ffswwwda/virtual-user-stress-test</a> · 线上 Demo：<a href="https://ffswwwda.github.io/virtual-user-stress-test/" target="_blank" rel="noopener" style="color:var(--tp)">virtual-user-stress-test</a></span>
+      </div>
+    </div>
+  </section>
+
   </section>
 
   <section class="page" id="page-principle" style="display:none">
