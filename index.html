@@ -637,6 +637,34 @@ body.light .tab:hover{background:rgba(0,0,0,.04)}
       </div>
       <p class="note">桥接点：体验不能「由虚拟人体验」，但体验反馈能「被虚拟人复用」。前置输入后，生成时可注入锚定层，让虚拟用户群放大已知体验问题的分布与影响。</p>
     </section>
+
+    <section class="section" id="ai-enhance">
+      <div class="sec-head">
+        <div class="kicker"><svg class="ic-svg"><use href="#i-zap"/></svg>AI ENHANCE · AI 增强模式</div>
+        <h2>接入大模型，做规则引擎做不到的深度分析</h2>
+        <p>开启后，压力测试会额外调用你配置的大模型生成「AI 洞察」，并可在结果页自由提问。<b style="color:var(--tp)">密钥仅保存在你本机浏览器</b>（localStorage），不会上传到任何服务器，也不会写进代码仓库。</p>
+      </div>
+      <div class="glass" style="padding:20px 22px">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
+          <label style="display:flex;align-items:center;gap:9px;font-size:14px;cursor:pointer">
+            <input type="checkbox" id="aiToggle" style="width:17px;height:17px;accent-color:var(--purple)"> 开启 AI 增强模式
+          </label>
+          <span id="aiStatus" style="font-size:13px;color:var(--ts)">未开启</span>
+        </div>
+        <div id="aiCfg" style="display:none;flex-direction:column;gap:12px">
+          <div style="display:flex;gap:12px;flex-wrap:wrap">
+            <label style="flex:1;min-width:220px;font-size:13px;color:var(--ts)">API Base URL<input type="text" id="aiBase" placeholder="https://api.openai.com/v1" style="width:100%;margin-top:6px"></label>
+            <label style="flex:1;min-width:180px;font-size:13px;color:var(--ts)">模型名<input type="text" id="aiModel" placeholder="gpt-4o-mini" style="width:100%;margin-top:6px"></label>
+          </div>
+          <label style="font-size:13px;color:var(--ts)">API Key（仅存本机）<input type="password" id="aiKey" placeholder="sk-..." style="width:100%;margin-top:6px"></label>
+          <div style="display:flex;gap:10px;align-items:center">
+            <button class="btn" onclick="saveAICfg()">保存配置</button>
+            <span id="aiSaveHint" style="font-size:12px;color:var(--tp)"></span>
+          </div>
+        </div>
+        <p class="note" style="margin:12px 0 0">支持任何 OpenAI 兼容端点（OpenAI / DeepSeek / 通义 / 智谱等，格式一致）。Anthropic 需另接适配器，暂未内置。</p>
+      </div>
+    </section>
   </section>
   </section>
 
@@ -698,6 +726,15 @@ body.light .tab:hover{background:rgba(0,0,0,.04)}
           <button class="btn btn-primary" onclick="runStress()" style="padding:11px 22px;font-size:14px">运行压力测试</button>
         </div>
         <div id="scenOut"></div>
+        <div class="glass" id="aiAsk" style="margin-top:18px;padding:16px 18px;display:none">
+          <div class="note" style="margin:0 0 8px"><b style="color:var(--tp)">问 AI（基于这群虚拟用户）</b></div>
+          <textarea id="aiQ" rows="2" placeholder="例如：为什么价格敏感型用户更反对？这批反对最常见的深层动机是什么？" style="width:100%;resize:vertical;font-family:inherit;font-size:13px;padding:10px;border-radius:9px;background:rgba(255,255,255,.04);border:1px solid var(--border);color:var(--t)"></textarea>
+          <div style="display:flex;gap:10px;align-items:center;margin-top:10px">
+            <button class="btn btn-primary" onclick="askAI()">发送提问</button>
+            <span id="aiQHint" style="font-size:12px;color:var(--ts)"></span>
+          </div>
+          <div id="aiA" style="margin-top:12px;font-size:13px;line-height:1.7;color:var(--ts);white-space:pre-wrap"></div>
+        </div>
       </div>
     </section>
   </section>
@@ -1001,6 +1038,75 @@ function generate(){
   chunk();
 }
 
+/* ===== AI 增强模式（OpenAI 兼容，provider 可配） ===== */
+let lastStressCtx='';
+function getAICfg(){
+  let s={};try{s=JSON.parse(localStorage.getItem('vust_ai_cfg')||'{}');}catch(e){}
+  return {base:s.base||'https://api.openai.com/v1', model:s.model||'gpt-4o-mini', key:s.key||'', on:!!s.on};
+}
+function saveAICfg(){
+  const cfg=getAICfg();
+  cfg.base=document.getElementById('aiBase').value.trim()||'https://api.openai.com/v1';
+  cfg.model=document.getElementById('aiModel').value.trim()||'gpt-4o-mini';
+  cfg.key=document.getElementById('aiKey').value.trim();
+  localStorage.setItem('vust_ai_cfg', JSON.stringify(cfg));
+  document.getElementById('aiSaveHint').textContent='已保存（仅本机）';
+  setTimeout(()=>document.getElementById('aiSaveHint').textContent='',2200);
+  refreshAIPanels();
+}
+function refreshAIPanels(){
+  const cfg=getAICfg();
+  const tg=document.getElementById('aiToggle'); if(tg)tg.checked=cfg.on;
+  document.getElementById('aiStatus').textContent=cfg.on?(cfg.key?'已开启 · 已配置':'已开启 · 待填密钥'):'未开启';
+  document.getElementById('aiCfg').style.display=cfg.on?'flex':'none';
+  const ask=document.getElementById('aiAsk'); if(ask)ask.style.display=(cfg.on&&cfg.key&&USERS.length)?'block':'none';
+}
+async function callLLM(system, user){
+  const cfg=getAICfg();
+  if(!cfg.on||!cfg.key)return null;
+  const url=(cfg.base.replace(/\/+$/,'')+'/chat/completions');
+  const ctrl=new AbortController(); const to=setTimeout(()=>ctrl.abort(),25000);
+  try{
+    const r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+cfg.key},
+      body:JSON.stringify({model:cfg.model,messages:[{role:'system',content:system},{role:'user',content:user}],temperature:0.6,max_tokens:600}),signal:ctrl.signal});
+    clearTimeout(to);
+    if(!r.ok){const e=await r.text().catch(()=> '');console.warn('LLM err',r.status,e);return null;}
+    const d=await r.json();
+    return (d.choices&&d.choices[0]&&d.choices[0].message&&d.choices[0].message.content)||null;
+  }catch(e){clearTimeout(to);console.warn('LLM fetch failed',e);return null;}
+}
+function escHtml(s){return (s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+function appendAIInsight(t){
+  const out=document.getElementById('scenOut'); if(!out)return;
+  const d=document.createElement('div'); d.className='glass';
+  d.style.cssText='padding:16px 18px;margin-top:14px;border:1px solid rgba(168,85,247,.32)';
+  d.innerHTML='<div class="note" style="margin:0 0 8px"><b style="color:var(--purple)">AI 洞察（大模型生成）</b></div><div style="font-size:13.5px;line-height:1.7;color:var(--ts);white-space:pre-wrap">'+escHtml(t)+'</div>';
+  out.appendChild(d);
+}
+function askAI(){
+  const cfg=getAICfg();
+  if(!cfg.on||!cfg.key){document.getElementById('aiQHint').textContent='请先在工作台开启 AI 增强模式并保存密钥';return;}
+  const q=document.getElementById('aiQ').value.trim();
+  if(!q){document.getElementById('aiQHint').textContent='请输入问题';return;}
+  const ctx=lastStressCtx||('当前虚拟用户群共 '+USERS.length+' 位，由 VOC 生成。');
+  document.getElementById('aiQHint').textContent='AI 思考中…';
+  callLLM('你是用户研究助手，基于给定的虚拟用户群体数据回答用户问题，尽量引用具体分群与原话，语言简洁。',
+    '群体数据摘要：\n'+ctx+'\n\n用户问题：'+q).then(t=>{
+    document.getElementById('aiQHint').textContent='';
+    document.getElementById('aiA').textContent=t||'（调用失败或模型无返回，请检查密钥 / 模型名 / 网络是否可达）';
+  });
+}
+function initAI(){
+  const cfg=getAICfg();
+  document.getElementById('aiBase').value=cfg.base;
+  document.getElementById('aiModel').value=cfg.model;
+  document.getElementById('aiKey').value=cfg.key;
+  document.getElementById('aiToggle').addEventListener('change',e=>{
+    const c=getAICfg(); c.on=e.target.checked; localStorage.setItem('vust_ai_cfg',JSON.stringify(c)); refreshAIPanels();
+  });
+  refreshAIPanels();
+}
+
 function runStress(){
   const sk=document.getElementById('scenSel').value;
   const scen=SCENARIOS[sk];
@@ -1026,6 +1132,7 @@ function runStress(){
     .map(k=>`${DRIVER_LABEL[k]||k} ${driverCnt[k]}`).join(' · ')||'—';
   const topKw=Object.keys(kwCnt).sort((a,b)=>kwCnt[b]-kwCnt[a]).slice(0,6)
     .map(k=>{const c=CONCERN_CATS.find(x=>x.key===k);return (c?c.label:k)+' '+kwCnt[k];}).join(' · ')||'—';
+  lastStressCtx=`场景：${scen.name}${brief?('，方案：「'+brief+'」'):''}。\n共 ${N} 位虚拟用户：支持 ${sup}、中立 ${neu}、反对 ${opp}。\n反对主因：${driverLine}。\n高频反对关键词：${topKw}。\n代表反对原话：${concerns.slice(0,5).map(c=>c.u.voice).join('；')}`;
   const out=document.getElementById('scenOut');
   out.innerHTML=`
     <div class="note" style="margin:0 0 4px">场景：<b style="color:var(--tp)">${scen.name}</b>${brief?' · 「'+brief+'」':''} · 共 ${N} 位虚拟用户
@@ -1051,6 +1158,11 @@ function runStress(){
       </div>`).join('')
     }</div>`:''}`;
   out.scrollIntoView({behavior:'smooth',block:'nearest'});
+  const ai=getAICfg();
+  if(ai.on&&ai.key){
+    callLLM('你是资深用户研究分析师，基于虚拟用户压力测试数据给出简明深度洞察：指出反对的深层逻辑、最该警惕的分群、以及一句改进建议。',
+      lastStressCtx+'\n\n请输出 160 字内的「AI 洞察」。').then(t=>{ if(t) appendAIInsight(t); });
+  }
 }
 
 document.getElementById('themeBtn').addEventListener('click',()=>{
@@ -1077,8 +1189,10 @@ function showResultsReady(){
   document.getElementById('stressReal').style.display='block';
   const hint=document.getElementById('genHint');
   if(hint)hint.style.display='block';
+  if(typeof refreshAIPanels==='function')refreshAIPanels();
 }
 document.querySelectorAll('.nav-pg').forEach(a=>a.addEventListener('click',e=>{e.preventDefault();showPage(a.dataset.page);}));
+initAI();
 </script>
 </body>
 </html>
