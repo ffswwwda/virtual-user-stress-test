@@ -36,6 +36,8 @@ body.light .navbar{background:rgba(247,245,245,.8);border-bottom:1px solid var(-
 .nav-right{display:flex;align-items:center;gap:14px}
 .nav-link{font-size:13px;color:var(--ts);text-decoration:none;padding:8px 14px;border-radius:10px;border:1px solid var(--border);transition:.3s}
 .nav-link:hover{color:var(--tp);background:rgba(255,255,255,.05)}
+.nav-sep{width:1px;height:22px;background:var(--border);margin:0 4px;flex-shrink:0}
+body.light .nav-sep{background:var(--border-l)}
 .theme-toggle{width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;border:1px solid var(--border);cursor:none;background:transparent;color:var(--tp)}
 .theme-toggle svg{width:20px;height:20px}
 .wrap{max-width:1180px;margin:0 auto;padding:104px 24px 90px;position:relative;z-index:1}
@@ -231,7 +233,9 @@ body.light .tab:hover{background:rgba(0,0,0,.04)}
   <div class="brand"><div class="brand-logo"><svg class="ic-svg"><use href="#w-fish"/></svg></div>虚拟用户压力测试</div>
   <div class="nav-right">
     <a class="nav-link nav-pg on" data-page="console" href="#">工作台</a>
-    <a class="nav-link nav-pg" id="navResults" data-page="results" href="#" style="display:none;opacity:.4;cursor:not-allowed">仿真结果</a>
+    <a class="nav-link nav-pg" data-page="users" href="#">虚拟用户卡</a>
+    <a class="nav-link nav-pg" data-page="stress" href="#">压力测试结果</a>
+    <span class="nav-sep"></span>
     <a class="nav-link nav-pg" data-page="principle" href="#">运行原理</a>
     <a class="nav-link nav-pg" data-page="intro" href="#">介绍</a>
     <a class="nav-link" href="https://ffswwwda.github.io/user-research-console/" target="_blank" rel="noopener">预测世界</a>
@@ -406,7 +410,7 @@ body.light .tab:hover{background:rgba(0,0,0,.04)}
           </ul>
         </div>
       </div>
-      <p class="note">说明：当前线上版本为纯规则内核，已能完成左侧全部能力。结果页的「生成结果 / 用户群体」两个板块即由此引擎驱动；LLM 增强作为可选后续层，不改动既有视觉与交互。</p>
+      <p class="note">说明：当前线上版本为纯规则内核，已能完成左侧全部能力。生成后的「虚拟用户卡 / 压力测试结果」两个页面即由此引擎驱动；LLM 增强作为可选后续层，不改动既有视觉与交互。</p>
     </section>
   </section>
 
@@ -483,58 +487,72 @@ body.light .tab:hover{background:rgba(0,0,0,.04)}
       <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
         <div class="demobanner" style="flex:1;margin:0;min-width:240px">
           <div class="di"><svg class="ic-svg"><use href="#w-check"/></svg></div>
-          <div>群体已生成。结果已整理到「<b>仿真结果</b>」页——可在那里查看生成结果（用户群体 / 数据看板）并运行压力测试。</div>
+          <div>群体已生成。可在「<b>虚拟用户卡</b>」查看用户群与数据看板，或到「<b>压力测试结果</b>」挑选场景运行压力测试。</div>
         </div>
-        <button class="btn btn-primary" onclick="showPage('results')" style="white-space:nowrap"><svg class="ic-svg" style="width:18px;height:18px;margin-right:8px;vertical-align:-3px"><use href="#i-flask"/></svg>查看仿真结果</button>
+        <button class="btn btn-primary" onclick="showPage('users')" style="white-space:nowrap"><svg class="ic-svg" style="width:18px;height:18px;margin-right:8px;vertical-align:-3px"><use href="#w-users"/></svg>查看虚拟用户卡</button>
       </div>
     </div>
   </section>
   </section>
 
-  <section class="page" id="page-results" style="display:none">
+  <section class="page" id="page-users" style="display:none">
     <section class="section">
       <div class="sec-head">
-        <div class="kicker"><svg class="ic-svg"><use href="#i-flask"/></svg>RESULTS · 仿真结果</div>
-        <h2>生成结果与用户群体</h2>
-        <p>这里是这群虚拟用户的计算产物。在两个板块间切换：<b>生成结果</b>（群体统计看板 + 压力测试结论），<b>用户群体</b>（逐张虚拟用户卡，可筛选分群 / 极端 / 搜索原话）。</p>
+        <div class="kicker"><svg class="ic-svg"><use href="#w-users"/></svg>VIRTUAL USERS · 虚拟用户卡</div>
+        <h2>这群虚拟用户长什么样</h2>
+        <p>每一张卡都是「锚定真实 VOC 原话 + 算法生成态度」的双层结构，可追溯出处。可筛选分群、只看极端用户、按原话关键词搜索。</p>
       </div>
 
-      <div class="tabs" id="resTabs">
-        <button class="tab on" data-tab="gen"><svg class="ic-svg"><use href="#w-bar"/></svg>生成结果</button>
-        <button class="tab" data-tab="group"><svg class="ic-svg"><use href="#w-users"/></svg>用户群体</button>
+      <div id="usersEmpty" class="empty">
+        <svg class="ic-svg"><use href="#w-users"/></svg>
+        <h3 style="font-size:20px;font-weight:800;margin:14px 0 8px">还没有生成虚拟用户</h3>
+        <p style="max-width:440px;margin:0 auto;color:var(--ts);line-height:1.7">这里会展示由你的 VOC 生成的虚拟用户卡（含群体数据看板）。请先到<b style="color:var(--tp)">工作台</b>运行一次「生成虚拟用户群」，再回来查看这群人。</p>
+        <button class="btn btn-primary" onclick="showPage('console')" style="margin-top:22px"><svg class="ic-svg" style="width:18px;height:18px;margin-right:8px;vertical-align:-3px"><use href="#i-zap"/></svg>去工作台生成</button>
       </div>
 
-      <div class="tabpane" id="tab-gen">
-        <div id="resultArea" style="margin-top:24px">
-          <div class="stats" id="stats"></div>
-          <div class="glass" style="padding:18px;margin-bottom:18px">
-            <div class="distbar" id="distBar"></div>
-            <div class="sum-line" id="distLegend" style="margin-top:8px"></div>
-          </div>
+      <div id="usersReal" style="display:none">
+        <div class="stats" id="stats"></div>
+        <div class="glass" style="padding:18px;margin-bottom:18px">
+          <div class="distbar" id="distBar"></div>
+          <div class="sum-line" id="distLegend" style="margin-top:8px"></div>
         </div>
-        <div class="glass scen" id="scenPanel">
-          <div class="sec-head" style="margin-bottom:6px"><div class="kicker"><svg class="ic-svg"><use href="#i-flask"/></svg>STRESS TEST · 压力测试</div><h2 style="font-size:21px">把这群用户丢进场景里</h2></div>
-          <div class="srow">
-            <select id="scenSel">
-              <option value="social">社媒内容传播</option>
-              <option value="launch">新品上架</option>
-              <option value="promo">优惠活动</option>
-            </select>
-            <input type="text" id="scenBrief" placeholder="可选：一句话描述内容 / 卖点，如「199 元平替精华，主打成分科普」">
-            <button class="btn btn-primary" onclick="runStress()" style="padding:11px 22px;font-size:14px">运行压力测试</button>
-          </div>
-          <div id="scenOut"></div>
-        </div>
-      </div>
-
-      <div class="tabpane" id="tab-group" style="display:none">
-        <div class="filters" style="margin-top:24px">
+        <div class="filters" style="margin-top:6px">
           <select id="fSeg"><option value="">全部分群</option></select>
           <label style="font-size:13px;color:var(--ts);display:flex;align-items:center;gap:6px"><input type="checkbox" id="fExt">仅看极端用户</label>
           <input type="text" id="fSearch" placeholder="搜索原话关键词…" style="flex:1;min-width:180px">
           <span id="fCount" style="font-size:13px;color:var(--ts)"></span>
         </div>
         <div class="ugrid" id="ugrid"></div>
+      </div>
+    </section>
+  </section>
+
+  <section class="page" id="page-stress" style="display:none">
+    <section class="section">
+      <div class="sec-head">
+        <div class="kicker"><svg class="ic-svg"><use href="#i-flask"/></svg>STRESS TEST · 压力测试结果</div>
+        <h2>把这群用户丢进场景里</h2>
+        <p>选择一个传播 / 上架 / 优惠场景，引擎给出支持 / 中立 / 反对的聚合结果，并列出代表性反对声音（压力点）。</p>
+      </div>
+
+      <div id="stressEmpty" class="empty">
+        <svg class="ic-svg"><use href="#i-flask"/></svg>
+        <h3 style="font-size:20px;font-weight:800;margin:14px 0 8px">还没有可压力测试的用户群</h3>
+        <p style="max-width:440px;margin:0 auto;color:var(--ts);line-height:1.7">压力测试需要先有一群虚拟用户。请先到<b style="color:var(--tp)">工作台</b>运行「生成虚拟用户群」，再到这里挑选场景跑测试。</p>
+        <button class="btn btn-primary" onclick="showPage('console')" style="margin-top:22px"><svg class="ic-svg" style="width:18px;height:18px;margin-right:8px;vertical-align:-3px"><use href="#i-zap"/></svg>去工作台生成</button>
+      </div>
+
+      <div id="stressReal" class="glass scen" style="display:none">
+        <div class="srow">
+          <select id="scenSel">
+            <option value="social">社媒内容传播</option>
+            <option value="launch">新品上架</option>
+            <option value="promo">优惠活动</option>
+          </select>
+          <input type="text" id="scenBrief" placeholder="可选：一句话描述内容 / 卖点，如「199 元平替精华，主打成分科普」">
+          <button class="btn btn-primary" onclick="runStress()" style="padding:11px 22px;font-size:14px">运行压力测试</button>
+        </div>
+        <div id="scenOut"></div>
       </div>
     </section>
   </section>
@@ -810,18 +828,13 @@ function showPage(p){
 }
 
 function showResultsReady(){
-  const nav=document.getElementById('navResults');
-  nav.style.display='';nav.style.opacity='1';nav.style.pointerEvents='auto';nav.style.cursor='pointer';
+  document.getElementById('usersEmpty').style.display='none';
+  document.getElementById('usersReal').style.display='block';
+  document.getElementById('stressEmpty').style.display='none';
+  document.getElementById('stressReal').style.display='block';
   const hint=document.getElementById('genHint');
   if(hint)hint.style.display='block';
 }
-
-function switchResTab(tab){
-  document.querySelectorAll('#resTabs .tab').forEach(b=>b.classList.toggle('on',b.dataset.tab===tab));
-  document.getElementById('tab-gen').style.display=tab==='gen'?'block':'none';
-  document.getElementById('tab-group').style.display=tab==='group'?'block':'none';
-}
-document.querySelectorAll('#resTabs .tab').forEach(b=>b.addEventListener('click',()=>switchResTab(b.dataset.tab)));
 document.querySelectorAll('.nav-pg').forEach(a=>a.addEventListener('click',e=>{e.preventDefault();showPage(a.dataset.page);}));
 </script>
 </body>
