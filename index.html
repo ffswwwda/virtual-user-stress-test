@@ -139,6 +139,13 @@ body.light .filters select,body.light .filters input[type=text]{background:rgba(
 .layer.a{background:rgba(251,191,36,.09);border:1px solid rgba(251,191,36,.32)}
 .layer.a .lh{color:#fcd34d}
 .layer .voice{font-size:13px;line-height:1.6;color:var(--tp);font-style:italic;margin-bottom:9px}
+.voice-en{font-size:11.5px;line-height:1.5;color:var(--ts);opacity:.78;margin:-4px 0 9px;padding-left:10px;border-left:2px solid var(--border)}
+body.light .voice-en{border-left-color:var(--border-l)}
+.demobanner{display:flex;gap:14px;align-items:flex-start;margin-top:22px;padding:16px 18px;border:1px solid rgba(0,212,255,.28);background:linear-gradient(135deg,rgba(0,212,255,.07),rgba(168,85,247,.07))}
+.demobanner .di{flex:0 0 auto;width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;background:var(--grad);color:#fff}
+.demobanner .di .ic-svg{width:18px;height:18px}
+.demobanner div:last-child{font-size:13px;line-height:1.6;color:var(--tp)}
+.demobanner b{color:var(--cyan)}
 .layer .kv{font-size:12px;line-height:1.55;color:var(--ts);margin:3px 0}
 .layer .kv b{color:var(--tp);font-weight:650}
 .conf{font-size:10px;font-weight:700;padding:1px 7px;border-radius:10px;margin-left:6px}
@@ -211,6 +218,10 @@ body.light .agg{border-color:var(--border-l)}
     <div class="cta">
       <button class="btn btn-primary" onclick="showPage('console')"><svg class="ic-svg" style="width:18px;height:18px;margin-right:8px;vertical-align:-3px"><use href="#i-zap"/></svg>开始生成虚拟用户</button>
       <a class="btn btn-sec" href="#logic">了解我们的逻辑</a>
+    </div>
+    <div class="glass demobanner">
+      <div class="di"><svg class="ic-svg"><use href="#i-doc"/></svg></div>
+      <div><b>内置真实示例数据集</b>：飞机杯·淋浴支架 真实 VOC（美亚欧亚汇总 · 3 星及以下，共 1731 条评价 / 158 个 ASIN）。源头整体偏负面，正好用来演示「上市前挑刺」压力测试。进入工作台可切换内置通用样本，或粘贴你自己的 VOC JSON 覆盖。</div>
     </div>
   </section>
 
@@ -343,12 +354,19 @@ body.light .agg{border-color:var(--border-l)}
         </div>
       </div>
       <div class="row" style="flex-direction:column;align-items:stretch;gap:10px">
-        <div><label>数据源头（VOC 导入）</label><div class="hint">留空则用内置样本；粘贴你的 VOC JSON 覆盖。格式见下方说明</div></div>
-        <textarea id="vocIn" placeholder='可选。例如：{"voc":[{"segment":"price","voice":"太贵了，同等功效的国产便宜一半","sentiment":"负","jtbd":"省钱","pain":"价格高","need":"性价比"}]}'></textarea>
+        <div><label>数据源头（VOC）</label><div class="hint">默认载入真实示例数据集；可切换为内置通用样本，或粘贴你自己的 VOC JSON 覆盖。示例来源为差评 / 中评源头，整体偏负面，适合演示「上市前挑刺」。</div></div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+          <select id="vocSrc" style="flex:1;min-width:240px">
+            <option value="demo">飞机杯 VOC 示例 · 1731 条真实评价（差评源头）</option>
+            <option value="builtin">内置通用样本 · 8 分群</option>
+          </select>
+          <button class="btn btn-sec" onclick="loadSource()" style="padding:10px 18px;font-size:13px">载入数据源</button>
+          <span id="vocStat" style="font-size:12px;color:var(--tm);align-self:center">当前：示例数据集</span>
+        </div>
+        <textarea id="vocIn" placeholder='可选覆盖。例如：{"voc":[{"segment":"price","voice":"太贵了，同等功效的国产便宜一半","sentiment":"负","jtbd":"省钱","pain":"价格高","need":"性价比"}]}'></textarea>
         <div style="display:flex;gap:10px">
-          <button class="btn btn-sec" onclick="applyVOC()" style="padding:10px 18px;font-size:13px">导入 VOC</button>
-          <button class="btn btn-sec" onclick="resetVOC()" style="padding:10px 18px;font-size:13px">用内置样本</button>
-          <span id="vocStat" style="font-size:12px;color:var(--tm);align-self:center">当前：内置样本（8 分群）</span>
+          <button class="btn btn-sec" onclick="applyVOC()" style="padding:10px 18px;font-size:13px">粘贴 JSON 覆盖</button>
+          <button class="btn btn-sec" onclick="document.getElementById('vocIn').value='';loadSource();" style="padding:10px 18px;font-size:13px">恢复当前源</button>
         </div>
       </div>
       <div class="row" style="border-bottom:none">
@@ -399,6 +417,7 @@ body.light .agg{border-color:var(--border-l)}
   </div>
 </div>
 
+<script src="voc-source.js"></script>
 <script>
 const mulberry32=(a)=>{return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}};
 
@@ -452,21 +471,36 @@ const BUILTIN_VOC={
   competitor:[{voice:'我用惯了 XX，换成本太高',sentiment:'中',jtbd:'延续习惯',pain:'迁移麻烦',need:'兼容/延续'},
              {voice:'你们和 XX 比差在哪？',sentiment:'中',jtbd:'对比择优',pain:'信息差',need:'差异化价值'}]
 };
-function resetVOC(){VOC=JSON.parse(JSON.stringify(BUILTIN_VOC));document.getElementById('vocStat').textContent='当前：内置样本（8 分群）';}
+function loadDemo(){
+  const d=window.DEMO_VOC;
+  if(!d||!d.segments)return false;
+  VOC={};let c=0;
+  Object.keys(d.segments).forEach(k=>{const arr=d.segments[k]||[];(VOC[k]=VOC[k]||[]).push(...arr);c+=arr.length;});
+  const m=d.meta||{};
+  document.getElementById('vocStat').textContent='当前：'+(m.name||'示例')+' · '+c+' 条（'+Object.keys(VOC).length+' 分群）';
+  return true;
+}
+function loadBuiltin(){VOC=JSON.parse(JSON.stringify(BUILTIN_VOC));document.getElementById('vocStat').textContent='当前：内置通用样本（'+Object.keys(VOC).length+' 分群）';}
+function loadSource(){
+  const sel=document.getElementById('vocSrc').value;
+  if(sel==='demo'){if(loadDemo())return;}
+  loadBuiltin();
+}
+function resetVOC(){loadSource();}
 resetVOC();
 
 function applyVOC(){
   const txt=document.getElementById('vocIn').value.trim();
-  if(!txt){resetVOC();return;}
+  if(!txt){loadSource();return;}
   try{
     const obj=JSON.parse(txt);
     const pool=obj.voc||obj.users||obj.segments;
     if(!Array.isArray(pool))throw new Error('需含 voc 数组');
     const nv={};let c=0;
-    pool.forEach(it=>{if(!it.segment)return;const k=it.segment;(nv[k]=nv[k]||[]).push({voice:it.voice||'',sentiment:it.sentiment||'',jtbd:it.jtbd||'',pain:it.pain||'',need:it.need||''});c++;});
+    pool.forEach(it=>{if(!it.segment)return;const k=it.segment;(nv[k]=nv[k]||[]).push({voice:it.voice||'',voiceEN:it.voiceEN||'',sentiment:it.sentiment||'',jtbd:it.jtbd||'',pain:it.pain||'',need:it.need||'',star:it.star||'',country:it.country||''});c++;});
     if(c===0)throw new Error('未解析到有效记录');
     VOC=nv;
-    document.getElementById('vocStat').textContent='已导入 '+c+' 条 VOC（覆盖 '+Object.keys(nv).length+' 个分群）';
+    document.getElementById('vocStat').textContent='已覆盖 '+c+' 条 VOC（'+Object.keys(nv).length+' 分群）';
   }catch(e){alert('VOC 解析失败：'+e.message);}
 }
 
@@ -513,8 +547,9 @@ function genUsers(N){
     const band=BANDS[bi];
     const segKey=sampleSeg(rng,BAND_PROFILE[band.key]);
     const seg=SEGMENTS.find(s=>s.key===segKey);
-    const pool=VOC[segKey]||VOC.innovator;
-    const v=pool[Math.floor(rng()*pool.length)];
+    let pool=VOC[segKey];
+    if(!pool||!pool.length)pool=Object.values(VOC).flat();
+    const v=pool[Math.floor(rng()*pool.length)]||{voice:'',sentiment:'',jtbd:'',pain:'',need:''};
     const stated=seg.x;
     let priv=Math.min(1,Math.max(0,seg.x+(rng()*2-1)*0.18));
     const gap=Math.abs(priv-stated)>0.22;
@@ -546,8 +581,9 @@ function cardHTML(u){
     <div class="layer g">
       <div class="lh"><svg class="ic-svg"><use href="#i-doc"/></svg>锚定层 · 必须真实（来自 VOC）</div>
       <div class="voice">“${u.voice}”</div>
-      <div class="kv"><b>情绪</b> ${u.sentiment} · <b>JTBD</b> ${u.jtbd}</div>
-      <div class="kv"><b>痛点</b> ${u.pain} · <b>需求</b> ${u.need}</div>
+      ${u.voiceEN?`<div class="voice-en">原文：${u.voiceEN}</div>`:''}
+      <div class="kv"><b>情绪</b> ${u.sentiment} · <b>JTBD</b> ${u.jtbd||'—'}${u.star?` · <b>星级</b> ${u.star}★`:''}${u.country?` · <b>地区</b> ${u.country}`:''}</div>
+      <div class="kv"><b>痛点</b> ${u.pain||'—'} · <b>需求</b> ${u.need||'—'}</div>
     </div>
     <div class="layer a">
       <div class="lh"><svg class="ic-svg"><use href="#i-users"/></svg>生成层 · 算法生成（带置信度）</div>
@@ -582,7 +618,7 @@ function renderGrid(){
   const seg=document.getElementById('fSeg').value;
   const ext=document.getElementById('fExt').checked;
   const q=document.getElementById('fSearch').value.trim().toLowerCase();
-  const list=USERS.filter(u=>(!seg||u.segKey===seg)&&(!ext||u.extreme)&&(!q||u.voice.toLowerCase().includes(q)));
+  const list=USERS.filter(u=>(!seg||u.segKey===seg)&&(!ext||u.extreme)&&(!q||(u.voice+u.voiceEN).toLowerCase().includes(q)));
   document.getElementById('fCount').textContent='显示 '+list.length+' / '+USERS.length;
   document.getElementById('ugrid').innerHTML=list.map(cardHTML).join('');
 }
