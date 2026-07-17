@@ -735,6 +735,14 @@ body.light .tab:hover{background:rgba(0,0,0,.04)}
           </div>
           <div id="aiA" style="margin-top:12px;font-size:13px;line-height:1.7;color:var(--ts);white-space:pre-wrap"></div>
         </div>
+        <div class="glass" id="aiTheme" style="margin-top:14px;padding:16px 18px;display:none">
+          <div class="note" style="margin:0 0 8px"><b style="color:var(--tp)">AI 反对主题解读</b>（基于本次反对用户群体）</div>
+          <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+            <button class="btn btn-primary" id="aiThemeBtn" style="padding:9px 18px;font-size:13px"><svg class="ic-svg" style="width:16px;height:16px;margin-right:7px;vertical-align:-2px"><use href="#i-zap"/></svg>生成反对主题摘要</button>
+            <span id="aiThemeHint" style="font-size:12px;color:var(--ts)"></span>
+          </div>
+          <div id="aiThemeOut" style="margin-top:12px;font-size:13px;line-height:1.7;color:var(--ts);white-space:pre-wrap"></div>
+        </div>
       </div>
     </section>
   </section>
@@ -1040,6 +1048,7 @@ function generate(){
 
 /* ===== AI 增强模式（OpenAI 兼容，provider 可配） ===== */
 let lastStressCtx='';
+let lastStressOpp=[];
 function getAICfg(){
   let s={};try{s=JSON.parse(localStorage.getItem('vust_ai_cfg')||'{}');}catch(e){}
   return {base:s.base||'https://api.openai.com/v1', model:s.model||'gpt-4o-mini', key:s.key||'', on:!!s.on};
@@ -1060,6 +1069,7 @@ function refreshAIPanels(){
   document.getElementById('aiStatus').textContent=cfg.on?(cfg.key?'已开启 · 已配置':'已开启 · 待填密钥'):'未开启';
   document.getElementById('aiCfg').style.display=cfg.on?'flex':'none';
   const ask=document.getElementById('aiAsk'); if(ask)ask.style.display=(cfg.on&&cfg.key&&USERS.length)?'block':'none';
+  const th=document.getElementById('aiTheme'); if(th)th.style.display=(cfg.on&&cfg.key&&USERS.length)?'block':'none';
 }
 async function callLLM(system, user){
   const cfg=getAICfg();
@@ -1096,6 +1106,21 @@ function askAI(){
     document.getElementById('aiA').textContent=t||'（调用失败或模型无返回，请检查密钥 / 模型名 / 网络是否可达）';
   });
 }
+function aiTheme(){
+  const cfg=getAICfg();
+  if(!cfg.on||!cfg.key){document.getElementById('aiThemeHint').textContent='请先在工作台开启 AI 增强模式并保存密钥';return;}
+  if(!lastStressOpp.length){document.getElementById('aiThemeHint').textContent='请先运行一次压力测试';return;}
+  document.getElementById('aiThemeHint').textContent='AI 归纳中…';
+  const opp=lastStressOpp;
+  const prompt=`以下是某场景压力测试中持「反对」立场的虚拟用户（共 ${opp.length} 位代表）的画像与原话。请据此归纳出 3-5 个反对主题，每个主题给出：主题名、典型人群/驱动、代表性原话引用、严重度判断；最后总结最值得优先解决的一个主题。\n\n`+
+    opp.map((o,i)=>`${i+1}. [${o.seg}/${o.band}] 驱动=${o.driverLabel}（相关度 ${(o.rel*100|0)}% · 风险 ${o.risk}）：${o.voice}`).join('\n');
+  callLLM('你是用户研究分析师，擅长把零散的反对声音归类为有意义的主题。输出结构化、有洞察的反对主题摘要，语言简洁。',
+    prompt).then(t=>{
+    document.getElementById('aiThemeHint').textContent='';
+    document.getElementById('aiThemeOut').textContent=t||'（调用失败或模型无返回，请检查密钥 / 模型名 / 网络是否可达）';
+  });
+}
+document.getElementById('aiThemeBtn').addEventListener('click',aiTheme);
 function initAI(){
   const cfg=getAICfg();
   document.getElementById('aiBase').value=cfg.base;
@@ -1132,7 +1157,9 @@ function runStress(){
     .map(k=>`${DRIVER_LABEL[k]||k} ${driverCnt[k]}`).join(' · ')||'—';
   const topKw=Object.keys(kwCnt).sort((a,b)=>kwCnt[b]-kwCnt[a]).slice(0,6)
     .map(k=>{const c=CONCERN_CATS.find(x=>x.key===k);return (c?c.label:k)+' '+kwCnt[k];}).join(' · ')||'—';
-  lastStressCtx=`场景：${scen.name}${brief?('，方案：「'+brief+'」'):''}。\n共 ${N} 位虚拟用户：支持 ${sup}、中立 ${neu}、反对 ${opp}。\n反对主因：${driverLine}。\n高频反对关键词：${topKw}。\n代表反对原话：${concerns.slice(0,5).map(c=>c.u.voice).join('；')}`;
+  lastStressOpp=concerns.map(c=>({seg:c.u.segName,band:c.u.band,extreme:!!c.u.extreme,driver:c.m.driver,driverLabel:DRIVER_LABEL[c.m.driver]||c.m.driver,detail:c.m.driverDetail,rel:c.m.rel,risk:c.m.risk,voice:c.u.voice}));
+  lastStressCtx=`场景：${scen.name}${brief?('，方案：「'+brief+'」'):''}。\n共 ${N} 位虚拟用户：支持 ${sup}、中立 ${neu}、反对 ${opp}（反对率 ${(opp/N*100).toFixed(0)}%）。\n反对主因分布：${driverLine}。\n高频反对关键词：${topKw}。\n代表性反对用户（按风险排序，共 ${opp} 位）：\n`+
+    concerns.slice(0,8).map((c,i)=>`${i+1}. [${c.u.segName}/${c.u.band}] 驱动=${DRIVER_LABEL[c.m.driver]||c.m.driver}（相关度 ${(c.m.rel*100|0)}% · 风险 ${c.m.risk}）：${c.u.voice}`).join('\n');
   const out=document.getElementById('scenOut');
   out.innerHTML=`
     <div class="note" style="margin:0 0 4px">场景：<b style="color:var(--tp)">${scen.name}</b>${brief?' · 「'+brief+'」':''} · 共 ${N} 位虚拟用户
@@ -1160,8 +1187,8 @@ function runStress(){
   out.scrollIntoView({behavior:'smooth',block:'nearest'});
   const ai=getAICfg();
   if(ai.on&&ai.key){
-    callLLM('你是资深用户研究分析师，基于虚拟用户压力测试数据给出简明深度洞察：指出反对的深层逻辑、最该警惕的分群、以及一句改进建议。',
-      lastStressCtx+'\n\n请输出 160 字内的「AI 洞察」。').then(t=>{ if(t) appendAIInsight(t); });
+    callLLM('你是资深用户研究分析师。基于下面的虚拟用户压力测试数据，输出一段深度洞察（200 字内）：①反对的深层逻辑（结合主因分布与高频关键词）；②最该警惕的分群及其风险；③一句可落地的改进建议。',
+      lastStressCtx).then(t=>{ if(t) appendAIInsight(t); });
   }
 }
 
