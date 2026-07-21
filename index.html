@@ -177,6 +177,31 @@ body.light .voice-en{border-left-color:var(--border-l)}
 .conf{font-size:10px;font-weight:700;padding:1px 7px;border-radius:10px;margin-left:6px}
 .conf-m{background:rgba(251,191,36,.18);color:#fcd34d}
 .conf-l{background:rgba(239,68,68,.16);color:#fca5a5}
+
+/* ===== 双层用户卡可视化 ===== */
+.dualvis{display:grid;grid-template-columns:1fr auto 1fr;gap:14px;align-items:stretch;margin-top:6px}
+.dv-col{border-radius:16px;padding:18px 20px;display:flex;flex-direction:column}
+.dv-col.g{background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.3)}
+.dv-col.a{background:rgba(251,191,36,.07);border:1px solid rgba(251,191,36,.3)}
+.dv-tag{font-size:11px;font-weight:800;letter-spacing:.06em;display:flex;align-items:center;gap:7px;margin-bottom:12px}
+.dv-col.g .dv-tag{color:#6ee7b7}
+.dv-col.a .dv-tag{color:#fcd34d}
+.dv-tag .ic-svg{width:15px;height:15px}
+.dv-quote{font-size:14px;line-height:1.62;color:var(--tp);margin-bottom:12px}
+.dv-col.a .dv-quote{font-style:italic}
+.dv-row{font-size:13px;line-height:1.55;color:var(--ts);margin:5px 0}
+.dv-row b{color:var(--tp);font-weight:650}
+.dv-foot{margin-top:auto;padding-top:12px;font-size:12px;color:var(--ts);border-top:1px dashed var(--border)}
+body.light .dv-foot{border-top-color:var(--border-l)}
+.dv-mid{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:0 4px;font-size:12px;color:var(--ts);text-align:center;max-width:120px}
+.dv-mid .arr{font-size:26px;font-weight:800;color:var(--cyan);margin:8px 0;line-height:1}
+.dv-mid .sub{font-size:11px;line-height:1.4;margin-top:8px}
+.dv-note{margin-top:16px;font-size:13.5px;line-height:1.7;color:var(--ts);background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:12px;padding:14px 18px}
+body.light .dv-note{border-color:var(--border-l);background:rgba(0,0,0,.03)}
+.dv-note b{color:var(--tp);font-weight:650}
+.dv-badge{display:inline-block;font-size:10px;font-weight:700;padding:1px 8px;border-radius:10px;margin-left:6px;vertical-align:1px}
+.dv-badge.real{background:rgba(16,185,129,.18);color:#6ee7b7}
+.dv-badge.gen{background:rgba(251,191,36,.16);color:#fcd34d}
 .empty{text-align:center;padding:60px 20px;color:var(--ts)}
 .empty svg{width:54px;height:54px;opacity:.4;margin-bottom:14px}
 .empty .btn{padding:10px 22px;font-size:13.5px;border-radius:11px;display:inline-flex;align-items:center;gap:6px}
@@ -291,6 +316,38 @@ body.light .tab:hover{background:rgba(0,0,0,.04)}
       <div class="glass card"><div class="ic"><svg class="ic-svg"><use href="#w-layers"/></svg></div><div class="num">03</div><h3>双层用户卡</h3><p>锚定层（真实原话/分群）必须准确；生成层（私态度/动作/人口代理）带置信度，不幻觉身份。</p></div>
       <div class="glass card"><div class="ic"><svg class="ic-svg"><use href="#w-flask"/></svg></div><div class="num">04</div><h3>场景压力测试</h3><p>把用户群丢进社媒传播 / 新品上架，看谁支持、谁反对、谁沉默，输出风险清单。</p></div>
     </div>
+  </section>
+
+  <section class="section" id="dualcard">
+    <div class="sec-head">
+      <div class="kicker"><svg class="ic-svg"><use href="#i-layers"/></svg>DUAL-LAYER CARD · 双层用户卡</div>
+      <h2>为什么一张卡要分两层</h2>
+      <p>这是整个工具最核心的设计。每张虚拟用户卡故意拆成「锚定层」和「生成层」：上面是真实可追溯的原话，下面是算法按理论生成的私态度。下面这张示意卡，能直接拿去给别人讲清楚我们怎么做用户。</p>
+    </div>
+
+      <div class="dualvis">
+        <div class="dv-col g">
+          <div class="dv-tag"><svg class="ic-svg"><use href="#i-doc"/></svg>锚定层 · 必须真实<span class="dv-badge real">来自 VOC</span></div>
+          <div class="dv-quote">「这玩意吸力够猛，但噪音大得吓人，老婆以为家里在装修。」</div>
+          <div class="dv-row"><b>情绪</b> 负面 · <b>JTBD</b> 省事省心 · <b>星级</b> 2★</div>
+          <div class="dv-row"><b>痛点</b> 噪音大 · <b>需求</b> 静音 + 强吸力</div>
+          <div class="dv-foot">↑ 每一句都能追到真实评价出处，不编造</div>
+        </div>
+        <div class="dv-mid">
+          <div>公开说的</div>
+          <div class="arr">≠</div>
+          <div>私下想的</div>
+          <div class="sub">say-do gap<br>动作预测看 ↓</div>
+        </div>
+        <div class="dv-col a">
+          <div class="dv-tag"><svg class="ic-svg"><use href="#i-users"/></svg>生成层 · 算法生成<span class="dv-badge gen">带置信度</span></div>
+          <div class="dv-quote">私态度：其实更在意「静音」而非「吸力」——公开吐槽噪音，但真正影响复购的是安静。</div>
+          <div class="dv-row"><b>置信度</b> 中（公开声音与私态度存在 say-do gap）</div>
+          <div class="dv-row"><b>人口代理</b> 30–40 岁男性 · 城市 <span class="dv-badge gen">低置信·推断</span></div>
+          <div class="dv-foot">↑ 算法按理论分布推断，不幻觉真实身份</div>
+        </div>
+      </div>
+      <div class="dv-note"><b>为什么一张卡要分两层：</b>人嘴上说「噪音大」，私下可能更在乎「静音」——这是 Ajzen 计划行为理论里的 <b>say-do gap</b>。公开声音只能告诉你他吐槽了什么；<b>真正预测动作的是生成层的私态度</b>。所以我们把「真实」和「生成」分开标：真实可追溯，生成带置信度，绝不混为一谈。</div>
   </section>
 
   <section class="section" id="theory">
@@ -698,7 +755,32 @@ body.light .tab:hover{background:rgba(0,0,0,.04)}
         <p>每一张卡都是「锚定真实 VOC 原话 + 算法生成态度」的双层结构，可追溯出处。可筛选分群、只看极端用户、按原话关键词搜索。</p>
       </div>
 
-      <div id="usersEmpty" class="empty">
+  
+      <div class="dualvis">
+        <div class="dv-col g">
+          <div class="dv-tag"><svg class="ic-svg"><use href="#i-doc"/></svg>锚定层 · 必须真实<span class="dv-badge real">来自 VOC</span></div>
+          <div class="dv-quote">「这玩意吸力够猛，但噪音大得吓人，老婆以为家里在装修。」</div>
+          <div class="dv-row"><b>情绪</b> 负面 · <b>JTBD</b> 省事省心 · <b>星级</b> 2★</div>
+          <div class="dv-row"><b>痛点</b> 噪音大 · <b>需求</b> 静音 + 强吸力</div>
+          <div class="dv-foot">↑ 每一句都能追到真实评价出处，不编造</div>
+        </div>
+        <div class="dv-mid">
+          <div>公开说的</div>
+          <div class="arr">≠</div>
+          <div>私下想的</div>
+          <div class="sub">say-do gap<br>动作预测看 ↓</div>
+        </div>
+        <div class="dv-col a">
+          <div class="dv-tag"><svg class="ic-svg"><use href="#i-users"/></svg>生成层 · 算法生成<span class="dv-badge gen">带置信度</span></div>
+          <div class="dv-quote">私态度：其实更在意「静音」而非「吸力」——公开吐槽噪音，但真正影响复购的是安静。</div>
+          <div class="dv-row"><b>置信度</b> 中（公开声音与私态度存在 say-do gap）</div>
+          <div class="dv-row"><b>人口代理</b> 30–40 岁男性 · 城市 <span class="dv-badge gen">低置信·推断</span></div>
+          <div class="dv-foot">↑ 算法按理论分布推断，不幻觉真实身份</div>
+        </div>
+      </div>
+      <div class="dv-note"><b>为什么一张卡要分两层：</b>人嘴上说「噪音大」，私下可能更在乎「静音」——这是 Ajzen 计划行为理论里的 <b>say-do gap</b>。公开声音只能告诉你他吐槽了什么；<b>真正预测动作的是生成层的私态度</b>。所以我们把「真实」和「生成」分开标：真实可追溯，生成带置信度，绝不混为一谈。</div>
+
+    <div id="usersEmpty" class="empty">
         <svg class="ic-svg"><use href="#w-users"/></svg>
         <h3 style="font-size:20px;font-weight:800;margin:14px 0 8px">还没有生成虚拟用户</h3>
         <p style="max-width:440px;margin:0 auto;color:var(--ts);line-height:1.7">这里会展示由你的 VOC 生成的虚拟用户卡（含群体数据看板）。请先到<b style="color:var(--tp)">工作台</b>运行一次「生成虚拟用户群」，再回来查看这群人。</p>
