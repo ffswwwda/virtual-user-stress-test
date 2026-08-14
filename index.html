@@ -1489,11 +1489,17 @@ function renderGrid(){
 }
 ['fSeg','fExt','fSearch'].forEach(id=>document.getElementById(id).addEventListener('input',renderGrid));
 
-function generate(){
+async function generate(){
   const N=Math.max(1,Math.min(2000,+document.getElementById('sizeN').value||100));
   const btn=document.getElementById('genBtn');btn.disabled=true;
   const wrap=document.getElementById('genWrap');wrap.classList.add('show');
   const bar=document.getElementById('genBar');const pct=document.getElementById('genPct');const txt=document.getElementById('genTxt');
+  const cfg=getAICfg();
+  const purpose=document.getElementById('purposeTxt')?document.getElementById('purposeTxt').value.trim():'';
+  if(cfg.on&&cfg.key&&purpose&&!window.__useFiltered){
+    if(txt){txt.textContent='AI 接管中：正在按产品目的筛选 VOC…';bar.style.width='8%';pct.textContent='8%';}
+    if(window.aiScreenVOC) await window.aiScreenVOC();
+  }
   try{
     USERS=genUsers(N);
     renderStats();
@@ -1505,7 +1511,7 @@ function generate(){
         for(;i<end;i++){if(i<200)grid.insertAdjacentHTML('beforeend',cardHTML(USERS[i],i));}
         const p=Math.round(i/N*100);bar.style.width=p+'%';pct.textContent=p+'%';txt.textContent='正在生成虚拟用户… '+i+' / '+N;
         if(i<N)requestAnimationFrame(chunk);
-        else{txt.textContent='生成完成 · 共 '+N+' 张虚拟用户卡';btn.disabled=false;renderGrid();showResultsReady();}
+        else{txt.textContent='生成完成 · 共 '+N+' 张虚拟用户卡'+(cfg.on&&cfg.key?'（AI 接管：画像由大模型生成）':'');btn.disabled=false;renderGrid();showResultsReady();}
       }catch(err){txt.textContent='生成失败：'+err.message;btn.disabled=false;console.error(err);}
     }
     chunk();
@@ -1526,7 +1532,7 @@ function getAICfg(){
 function saveAICfg(){
   const cfg=getAICfg();
   cfg.base=document.getElementById('aiBase').value.trim()||'https://api.deepseek.com/v1';
-  cfg.model=document.getElementById('aiModel').value.trim()||'deepseek-chat';
+  cfg.model=document.getElementById('aiModel').value.trim()||'deepseek-v4-flash';
   cfg.key=document.getElementById('aiKey').value.trim();
   localStorage.setItem('vust_ai_cfg', JSON.stringify(cfg));
   document.getElementById('aiSaveHint').textContent='已保存（仅本机）';
@@ -1948,9 +1954,9 @@ initAI();
         voice:v.voice,sentiment:v.sentiment,jtbd:v.jtbd,pain:v.pain,need:v.need,
         vstar:v.star,
         refPrice:extractPrice(v.voice),intensity:computeIntensity(v.voice,v.star),
-        stated,private:priv,privateLabel:stanceLabel(priv),gap,
+        stated,statedLabel:stanceLabel(stated),private:priv,privateLabel:stanceLabel(priv),gap,
         isKOL:seg.isKOL,activity:seg.activity,extreme:false,
-        demo,influence:1,psycho:null,
+        demo,influence:1,psycho:null,persona:'',
         _es:band.rank/5*0.5+(seg.isKOL?0.5:0)+seg.activity*0.3+rng()*0.2
       };
       arr.push(u);
@@ -1965,20 +1971,24 @@ initAI();
     return arr;
   };
 
-  /* ---------- D. 心理推导层 ---------- */
+  /* ---------- D. 心理推导层（AI 接管：态度/小传/心理全由大模型推导） ---------- */
   async function inferPsycho(users){
     const cfg=getAICfg();
     if(!cfg.on||!cfg.key) return;
-    const B=6;
+    const B=8;
     for(let i=0;i<users.length;i+=B){
       const batch=users.slice(i,i+B);
-      const sys='你是消费心理分析师。下面 N 位虚拟用户的「真实原话」是锚定层（固定事实，不可更改）。请基于每位真实原话推导其心理画像，输出 JSON 数组，长度与用户数一致，每位含：motive（真实动机：所言 vs 所想）、barrier（潜意识障碍）、attach（情感依附点）、risk（风险规避倾向），每字段一句话。只输出 JSON。';
-      const user=batch.map((u,idx)=>(idx+1)+'. 分群='+u.segName+' 原话：“'+(u.voice||'').slice(0,140)+'”').join('\n');
+      const sys='你是消费心理分析师，也是用户研究员。下面 N 位虚拟用户的「真实原话」是锚定层（固定事实，不可更改、不可编造）。请基于每位真实原话，为每一位输出一个 JSON 对象（整个回复是一个 JSON 数组，长度与用户数一致），每位含：private（0~1 的数值，代表你判断的「私下真实态度」，0=强烈反对、0.5=中立、1=强烈支持）、persona（一句话人物小传，16 字内，含身份/场景/典型动作）、motive（真实动机：所言 vs 所想）、barrier（潜意识障碍）、attach（情感依附点）、risk（风险规避倾向），后四者每字段一句话。只输出 JSON，不要解释。';
+      const user=batch.map((u,idx)=>(idx+1)+'. 分群='+u.segName+' 公开态度='+u.statedLabel+' 原话：“'+(u.voice||'').slice(0,140)+'”').join('\n');
       let res=null; try{ res=await callLLM(sys,user); }catch(e){ res=null; }
       let arr=null;
       if(res){ try{ const m=res.match(/\[[\s\S]*\]/); arr=m?JSON.parse(m[0]):null; }catch(e){ arr=null; } }
       if(Array.isArray(arr)){
-        batch.forEach((u,k)=>{ const o=arr[k]; if(o) u.psycho={motive:o.motive||'',barrier:o.barrier||'',attach:o.attach||'',risk:o.risk||''}; });
+        batch.forEach((u,k)=>{ const o=arr[k]; if(!o)return;
+          if(typeof o.private==='number'){ u.private=Math.min(1,Math.max(0,o.private)); u.privateLabel=stanceLabel(u.private); u.gap=Math.abs(u.private-u.stated)>0.22; }
+          if(o.persona) u.persona=String(o.persona).slice(0,40);
+          u.psycho={motive:o.motive||'',barrier:o.barrier||'',attach:o.attach||'',risk:o.risk||''};
+        });
       }
       if(typeof renderGrid==='function') renderGrid();
     }
@@ -2009,6 +2019,7 @@ initAI();
       '<div class="layer a">'+
         '<div class="lh"><svg class="ic-svg"><use href="#i-users"/></svg>生成层 · 算法生成（带置信度）</div>'+
         '<div class="kv"><b>私态度</b> '+u.privateLabel+confM+(u.gap?' · 与公开声音存在 say-do gap':'')+'</div>'+
+        (u.persona?'<div class="kv"><b>人物小传</b> '+esc(u.persona)+'</div>':'')+
         '<div class="kv"><b>人口代理</b> '+u.demo+'<span class="conf conf-l">低置信·推断非真实</span></div>'+
       '</div>'+
       psychoHTML(u)+
@@ -2081,9 +2092,21 @@ initAI();
       (concerns.length?'<div class="concerns" style="margin-top:14px"><div class="note" style="margin:0 0 6px">代表性反对声音（按风险排序，共 '+opp+' 位反对）：</div>'+concerns.map(c=>'<div class="cc"><div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px"><b>'+c.u.segName+'</b>（'+c.u.band+'）'+(c.u.extreme?'<span class="badge b-ext">极端/领先</span>':'')+(c.u.isKOL?'<span class="badge b-kol">KOL</span>':'')+'<span style="font-size:11px;padding:2px 8px;border-radius:10px;background:rgba(239,68,68,.16);color:#fca5a5">风险 '+c.m.risk+'</span><span style="font-size:11px;padding:2px 8px;border-radius:10px;background:rgba(0,212,255,.14);color:#7dd3fc">相关度 '+((c.m.rel*100)|0)+'%</span><span style="font-size:11px;padding:2px 8px;border-radius:10px;background:rgba(168,85,247,.16);color:#d8b4fe">驱动：'+(DRIVER_LABEL[c.m.driver]||c.m.driver)+'</span></div>“'+esc(c.u.voice)+'”<div style="font-size:12.5px;color:var(--ts);margin-top:5px">↳ '+esc(c.m.driverDetail)+(c.m.priceNote&&c.m.driver!=='price'?'；'+esc(c.m.priceNote):'')+'</div></div>').join('')+'</div>':'')+
       (standalone?'<div class="report-card"><div class="note" style="margin:0 0 6px"><b style="color:var(--purple)">单独报告</b> · 可复制给智能体做多轮深挖</div><div style="font-size:12.5px;line-height:1.7;color:var(--ts);white-space:pre-wrap">'+esc(lastStressCtx)+'</div></div>':'');
     if(typeof out.scrollIntoView==='function') out.scrollIntoView({behavior:'smooth',block:'nearest'});
-    const ai=getAICfg();
-    if(ai.on&&ai.key){ callLLM('你是资深用户研究分析师。基于下面的虚拟用户压力测试数据，输出一段深度洞察（200 字内）：①反对的深层逻辑；②最该警惕的分群及风险；③一句可落地的改进建议。', lastStressCtx).then(t=>{ if(t) appendAIInsight(t); }); }
+    aiStressReport();
   };
+
+  /* ---------- E2. 压力测试 AI 接管解读（大模型撰写完整报告） ---------- */
+  function aiStressReport(){
+    const ai=getAICfg(); if(!ai.on||!ai.key) return;
+    const out=document.getElementById('scenOut'); if(!out)return;
+    const rep=document.createElement('div'); rep.className='glass report-card'; rep.style.cssText='padding:16px 18px;margin-top:14px;border:1px solid rgba(168,85,247,.32)';
+    rep.innerHTML='<div class="note" style="margin:0 0 8px"><b style="color:var(--purple)">AI 接管解读（大模型生成 · 非规则结论）</b></div><div class="ai-rep" style="font-size:13.5px;line-height:1.75;color:var(--ts);white-space:pre-wrap">AI 正在解读压力测试结果…</div>';
+    out.appendChild(rep);
+    const sys='你是资深用户研究分析师，也是产品/增长顾问。下面是一份由规则引擎产出的虚拟用户压力测试结构化数据（含真实原话引用）。请基于这些数据，用「AI 接管」的视角做完整解读，不要只复述数字，要给出判断：①反对的深层逻辑（为什么这些人会反对，背后的心理/场景机制）；②逐分群解读（8 个分群各自的态度与最该警惕的点）；③最该优先解决的一个矛盾与一句可落地改进建议；④如果这是上市前，给一句「能不能上」的结论与前置条件。语言简洁、有洞察、可直接给老板看。';
+    callLLM(sys, lastStressCtx+'\n\n（以上是规则引擎的结构化结论，请据此做你的完整解读）').then(t=>{
+      const el=rep.querySelector('.ai-rep'); if(el) el.textContent = t || '（调用失败或模型无返回，请检查密钥 / 模型名 / 网络是否可达）';
+    });
+  }
 
   /* ---------- F. 智能体对话 ---------- */
   function agentSummary(){
