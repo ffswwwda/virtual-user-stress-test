@@ -1378,7 +1378,7 @@ let lastStressCtx='';
 let lastStressOpp=[];
 function getAICfg(){
   let s={};try{s=JSON.parse(localStorage.getItem('vust_ai_cfg')||'{}');}catch(e){}
-  return {base:s.base||'https://api.deepseek.com/v1', model:s.model||'deepseek-chat', key:s.key||'', on:!!s.on};
+  return {base:s.base||'https://api.deepseek.com/v1', model:s.model||'deepseek-v4-flash', key:s.key||'', on:!!s.on};
 }
 function saveAICfg(){
   const cfg=getAICfg();
