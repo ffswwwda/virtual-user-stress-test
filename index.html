@@ -679,10 +679,11 @@ body.light .tab:hover{background:rgba(0,0,0,.04)}
       </div>
       <div class="ctrl-head"><svg class="ic-svg"><use href="#i-doc"/></svg>数据源头（VOC）</div>
       <div class="row" style="flex-direction:column;align-items:stretch;gap:10px">
-        <div><label>数据源头（VOC）</label><div class="hint">默认载入真实示例数据集；可切换为内置通用样本，或粘贴你自己的 VOC JSON 覆盖。示例来源为差评 / 中评源头，整体偏负面，适合演示「上市前挑刺」。</div></div>
+        <div><label>数据源头（VOC）</label><div class="hint">默认载入真实示例数据集（飞机杯 1731 条差评源头）；可选「类目用户研究室」从 <code style="background:rgba(255,255,255,.06);padding:1px 5px;border-radius:3px">ffswwwda.github.io/category-insight-hub</code> 拉取 3 市场用户评价 + 社媒；也可切换为内置通用样本，或粘贴 JSON 覆盖。</div></div>
         <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
           <select id="vocSrc" style="flex:1;min-width:240px">
             <option value="demo">飞机杯 VOC 示例 · 1731 条真实评价（差评源头）</option>
+            <option value="cih">类目用户研究室 · 用户评价+社媒（3市场 ×1731 PR + 社媒）</option>
             <option value="builtin">内置通用样本 · 8 分群</option>
           </select>
           <button class="btn btn-sec" onclick="loadSource()" style="padding:10px 18px;font-size:13px">载入数据源</button>
@@ -717,7 +718,7 @@ body.light .tab:hover{background:rgba(0,0,0,.04)}
         <div id="aiCfg" style="display:none;flex-direction:column;gap:12px">
           <div style="display:flex;gap:12px;flex-wrap:wrap">
             <label style="flex:1;min-width:220px;font-size:13px;color:var(--ts)">API Base URL<input type="text" id="aiBase" placeholder="https://api.deepseek.com/v1" value="https://api.deepseek.com/v1" style="width:100%;margin-top:6px"></label>
-            <label style="flex:1;min-width:180px;font-size:13px;color:var(--ts)">模型名<input type="text" id="aiModel" placeholder="deepseek-chat" value="deepseek-chat" style="width:100%;margin-top:6px"></label>
+            <label style="flex:1;min-width:180px;font-size:13px;color:var(--ts)">模型名<input type="text" id="aiModel" placeholder="deepseek-chat" value="deepseek-v4-flash" style="width:100%;margin-top:6px"></label>
           </div>
           <label style="font-size:13px;color:var(--ts)">API Key（仅存本机）<input type="password" id="aiKey" placeholder="sk-..." style="width:100%;margin-top:6px"></label>
           <div style="display:flex;gap:10px;align-items:center">
@@ -725,7 +726,7 @@ body.light .tab:hover{background:rgba(0,0,0,.04)}
             <span id="aiSaveHint" style="font-size:12px;color:var(--tp)"></span>
           </div>
         </div>
-        <p class="note" style="margin:10px 0 0">支持任何 OpenAI 兼容端点（DeepSeek / OpenAI / 通义 / 智谱等）。密钥仅存本机浏览器。</p>
+        <p class="note" style="margin:10px 0 0">默认推荐 <b style="color:var(--cyan)">DeepSeek</b>（国内可直连）：Base = <code style="background:rgba(0,212,255,.1);padding:1px 6px;border-radius:4px">https://api.deepseek.com/v1</code>，Model = <code style="background:rgba(0,212,255,.1);padding:1px 6px;border-radius:4px">deepseek-v4-flash</code>。也支持 OpenAI / 通义 / 智谱等其他 OpenAI 兼容端点。密钥仅存本机浏览器。</p>
       </div>
       <button class="btn btn-primary" id="genBtn" style="width:100%;margin-top:8px" onclick="generate()"><svg class="ic-svg" style="width:18px;height:18px;margin-right:8px;vertical-align:-3px"><use href="#i-zap"/></svg>生成虚拟用户群</button>
       <div class="genbar-wrap" id="genWrap">
@@ -991,6 +992,7 @@ function loadBuiltin(){VOC=JSON.parse(JSON.stringify(BUILTIN_VOC));document.getE
 function loadSource(){
   const sel=document.getElementById('vocSrc').value;
   if(sel==='demo'){if(loadDemo())return;loadBuiltin();return;}
+  if(sel==='cih'){loadFromCIHub();return;}
   loadBuiltin();
 }
 let _loadHintT=null;
@@ -1007,6 +1009,156 @@ function showLoadHint(msg,ok){
 }
 function resetVOC(){loadSource();}
 resetVOC();
+
+/* ===== 从类目用户研究室（category-insight-hub）拉取用户评价 + 社媒 =====
+   - 用户评价：同源 fetch 抓 HTML，正则切 window.PRODUCTREVIEWS_*_RAW=[...] 字面量
+   - 社媒（百科/Wikipedia + 内置样本）：hub 页的 _ND_redditPosts 实际是运行时通过 Wikipedia API 拉的,
+     这里直接用同样的接口(fetch zh.wikipedia.org 的 opensearch/search)拉"飞机杯/震动棒/情趣用品"相关条目。
+   - 失败回退：用户评价拉不到 → 退回 loadBuiltin()；社媒拉不到 → 跳过该子源继续 VOC 入池。*/
+async function loadFromCIHub(){
+  showLoadHint('正在拉取类目用户研究室（用户评价 3市场 + 社媒）…',true);
+  const HUB_URL='https://ffswwwda.github.io/category-insight-hub/category-insight-hub.html';
+  const keys=['PRODUCTREVIEWS_US_RAW','PRODUCTREVIEWS_EU_RAW','PRODUCTREVIEWS_JP_RAW'];
+  // ---- 第 1 步：抓 hub 页拿到 3 市场用户评价（JS 字面量，键不带引号，用 new Function 解析）----
+  let html='';
+  try{
+    const r=await fetch(HUB_URL,{cache:'no-cache'});
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    html=await r.text();
+  }catch(e){
+    showLoadHint('✗ 拉取 hub 页失败：'+e.message+' — 回退到内置样本',false);
+    loadBuiltin();
+    return;
+  }
+  const sets={};
+  for(const k of keys){
+    const re=new RegExp('window\\.'+k+'\\s*=\\s*\\[');
+    const m=re.exec(html); if(!m) continue;
+    let start=m.index+m[0].length, depth=0, end=start;
+    for(;end<html.length;end++){
+      const c=html[end];
+      if(c==='[') depth++;
+      else if(c===']'){ depth--; if(depth===0){ end++; break; } }
+    }
+    const literal=html.slice(start,end);
+    if(!literal||literal.length<2) continue;
+    try{
+      // 同源静态资源（用户明确授权的 ffswwwda.github.io）信任，
+      // 用 new Function 直接求值数组字面量；解析失败/JS 语法错则跳过该源
+      sets[k]=new Function('return ('+literal+');')();
+    }catch(err){
+      console.warn('parse '+k+' skipped:', err && err.message);
+      sets[k]=[];
+    }
+  }
+  const us=sets.PRODUCTREVIEWS_US_RAW||[], eu=sets.PRODUCTREVIEWS_EU_RAW||[], jp=sets.PRODUCTREVIEWS_JP_RAW||[];
+  // 列出跳过源（便于排错）
+  const skippedKeys=keys.filter(k=>(sets[k]||[]).length===0);
+  if(us.length+eu.length+jp.length===0){
+    showLoadHint('✗ 未读到任何用户评价（页面可能被更新或字段已改名），回退到内置样本',false);
+    loadBuiltin();
+    return;
+  }
+  // ---- 第 2 步：拉 Wikipedia 社媒（zh.wikipedia.org 国内可直连，CORS 友好）----
+  const KWS=['飞机杯','成人用品','情趣用品','震动棒','飞机杯 噪音'];
+  let social=[];
+  for(const kw of KWS){
+    try{
+      const u='https://zh.wikipedia.org/w/api.php?action=query&list=search&srsearch='+encodeURIComponent(kw)+'&format=json&origin=*&srlimit=8&srprop=snippet';
+      const r=await fetch(u);
+      if(!r.ok) continue;
+      const data=await r.json();
+      const items=(data.query&&data.query.search)?data.query.search:[];
+      for(const it of items){
+        social.push({
+          title:it.title,
+          text:(it.snippet||'').replace(/<[^>]+>/g,'').slice(0,200),
+          subreddit:'Wikipedia',
+          score:it.wordcount||0,
+          comments:0,
+          market:'zh'
+        });
+        if(social.length>=20) break;
+      }
+      if(social.length>=20) break;
+    }catch(e){ /* skip */ }
+  }
+  // ---- 第 3 步：字段映射 → VOC schema + 8 分群关键词匹配 ----
+  VOC={};
+  const put=(seg,v)=>{ (VOC[seg]=VOC[seg]||[]).push(v); };
+  const segments={
+    price:['价格','贵','便宜','性价比','促销','折扣','省钱'],
+    quality:['材质','做工','质感','耐久','耐用','包装','手感','精致','品质'],
+    innovator:['新','创新','首发','尝鲜','新品','第一次'],
+    kol:['推荐','安利','种草','粉丝','评测','达人','博主'],
+    pain:['噪音','漏','撕裂','破','异味','过敏','疼','不适','闷','漏液','坏了'],
+    critic:['批评','很烂','骗','太差','坑','智商税','失望','不如'],
+    competitor:['对比','其他','同类','竞品','别的牌子'],
+    watcher:['观望','再看看','考虑一下']};
+  const classify=(text)=>{
+    const t=(text||'').toLowerCase();
+    for(const s of Object.keys(segments)){
+      if(segments[s].some(w=>t.includes(w))) return s;
+    }
+    return 'quality';
+  };
+  const mapAttitude=(a)=>{
+    const x=(a||'').toLowerCase();
+    if(x.includes('正')||x.includes('good')||x.includes('positive')) return '正';
+    if(x.includes('中性')||x.includes('中立')||x.includes('neutral')) return '中';
+    return '负';
+  };
+  const mapJTBDFirstDim=(tagsStr)=>{
+    if(!tagsStr) return '省事省心';
+    const first=(tagsStr.split(/[;,]/)[0]||'').trim();
+    const m=first.match(/^\d+_([^-|]+)/);
+    return m?m[1].trim():'省事省心';
+  };
+  const mapPain=(aspectStr)=>{
+    if(!aspectStr||aspectStr==='未提及') return '';
+    return aspectStr.split('|')[0].trim();
+  };
+  const mapNeed=(aspectStr)=>{
+    if(!aspectStr) return '';
+    if(aspectStr.includes('撕裂')||aspectStr.includes('耐久')||aspectStr.includes('坏')) return '更耐用';
+    if(aspectStr.includes('价格')||aspectStr.includes('贵')) return '性价比';
+    if(aspectStr.includes('噪音')) return '更安静';
+    if(aspectStr.includes('尺寸')) return '尺寸合适';
+    if(aspectStr.includes('材质')) return '更亲肤';
+    return aspectStr.split('|').slice(-1)[0].trim();
+  };
+  let pvCount=0, socialCount=0;
+  for(const arr of [us,eu,jp]){
+    for(const r of arr){
+      const voice=(r.title?r.title+'。':'')+(r.evidence?(r.evidence.length>140?r.evidence.slice(0,140)+'…':r.evidence):'');
+      const seg=classify(((r.aspect||'')+' '+(r.tags||'')+' '+(r.evidence||'')).toLowerCase());
+      const v={voice:voice.trim(),
+        sentiment:mapAttitude(r.attitude)+'·'+(r.star?(r.star+'★'):'?'),
+        jtbd:mapJTBDFirstDim(r.tags),
+        pain:mapPain(r.aspect),
+        need:mapNeed(r.aspect),
+        market:r.market||'US'};
+      put(seg,v); pvCount++;
+    }
+  }
+  // 社媒（百科）不进 8 分群统一赛道，作为单独的"kol"分群入池（避免污染主结构）
+  for(const r of social){
+    const txt=r.title?r.title+(r.text?' — '+r.text:''):(r.text||'');
+    const seg=classify(txt.toLowerCase())||'kol';
+    const v={voice:txt.slice(0,200),
+      sentiment:mapAttitude('中'),
+      jtbd:'了解品类',
+      pain:'',
+      need:'',
+      market:r.market||'zh', source:'social/wikipedia'};
+    put(seg,v); socialCount++;
+  }
+  const segN=Object.keys(VOC).length;
+  document.getElementById('vocStat').textContent='当前：类目用户研究室 · 用户评价 '+pvCount+' 条 + 社媒 '+socialCount+' 条（'+segN+' 分群，3 市场 US/EU/JP）';
+  showLoadHint('✓ 已载入用户评价 '+pvCount+' 条 · 社媒(百科) '+socialCount+' 条（'+segN+' 分群）'+(skippedKeys.length?' · 跳过了：'+skippedKeys.join(',').replace(/_RAW/g,'')+' (该源 JS 不合法)':''),true);
+}
+window.loadFromCIHub=loadFromCIHub;
+
 
 function applyVOC(){
   const txt=document.getElementById('vocIn').value.trim();
