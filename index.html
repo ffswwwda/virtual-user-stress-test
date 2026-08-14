@@ -1010,6 +1010,51 @@ function showLoadHint(msg,ok){
 function resetVOC(){loadSource();}
 resetVOC();
 
+
+/* ===== JS 字面量智能解析（容错版）=====
+   hub 站 window.*_RAW=[...] 是 JS 对象字面量（key 无引号），且历史上曾出现对象字符串未闭合导致整体非法的情况。
+   这里两步走：① 尝试整体 JSON.parse（给 key 加引号 + 处理单引号）；
+               ② 失败则按 },{ 切出单对象，逐个加引号 + JSON.parse，跳过破损对象。 */
+function parseMaybeJSArray(literal){
+  if(!literal) return null;
+  // 去除最外层方括号（如果有）
+  let body = literal.trim();
+  if(body.startsWith('[') && body.endsWith(']')) body = body.slice(1, -1);
+  // 整体尝试：所有 [,{后跟identifier: 加引号
+  try{
+    const fixed = body.replace(/([{,]\s*)([A-Za-z_$][\w$]*)\s*:/g, '$1"$2":')
+                       .replace(/'/g, '"');
+    const arr = JSON.parse('['+fixed+']');
+    if(Array.isArray(arr) && arr.length) return arr;
+  }catch(_e1){ /* fallback below */ }
+  // 整体失败 → 按对象切分
+  const objs=[];
+  let depth=0, inStr=false, esc=false, objStart=-1;
+  for(let i=0;i<body.length;i++){
+    const c=body[i];
+    if(esc){ esc=false; continue; }
+    if(c==='\\'){ esc=true; continue; }
+    if(c==='"'){ inStr=!inStr; continue; }
+    if(inStr) continue;
+    if(c==='{'){ if(depth===0) objStart=i; depth++; }
+    else if(c==='}'){
+      depth--;
+      if(depth===0 && objStart>=0){
+        const objText = body.slice(objStart, i+1);
+        try{
+          const fixed = objText.replace(/([{,]\s*)([A-Za-z_$][\w$]*)\s*:/g, '$1"$2":')
+                          .replace(/'/g, '"');
+          const o = JSON.parse(fixed);
+          if(o && typeof o==='object') objs.push(o);
+        }catch(_e2){ /* skip broken object */ }
+        objStart = -1;
+      }
+    }
+  }
+  return objs;
+}
+window.parseMaybeJSArray=parseMaybeJSArray;
+
 /* ===== 从类目用户研究室（category-insight-hub）拉取用户评价 + 社媒 =====
    - 用户评价：同源 fetch 抓 HTML，正则切 window.PRODUCTREVIEWS_*_RAW=[...] 字面量
    - 社媒（百科/Wikipedia + 内置样本）：hub 页的 _ND_redditPosts 实际是运行时通过 Wikipedia API 拉的,
@@ -1041,11 +1086,10 @@ async function loadFromCIHub(){
       else if(c===']'){ depth--; if(depth===0){ end++; break; } }
     }
     const literal=html.slice(start,end);
-    if(!literal||literal.length<2) continue;
+          if(!literal||literal.length<2) continue;
     try{
-      // 同源静态资源（用户明确授权的 ffswwwda.github.io）信任，
-      // 用 new Function 直接求值数组字面量；解析失败/JS 语法错则跳过该源
-      sets[k]=new Function('return ('+literal+');')();
+      // 智能解析：先尝试整体 JSON.parse(给 key 加引号)，失败则按 },{ 切单对象逐个修复
+      sets[k]=parseMaybeJSArray(literal)||[];
     }catch(err){
       console.warn('parse '+k+' skipped:', err && err.message);
       sets[k]=[];
