@@ -1649,11 +1649,20 @@ function aiCard(btn){
   const u=USERS[+card.dataset.idx]; if(!u)return;
   const out=card.querySelector('.aiCardOut'); out.style.display='block';
   const cfg=getAICfg();
-  if(!cfg.on||!cfg.key){out.textContent='请先在工作台开启 AI 增强模式并保存密钥';return;}
-  out.textContent='AI 解读中…';
+  if(!cfg.on||!cfg.key){out.innerHTML='<span style="color:var(--red);font-weight:600">⚠ 请先在工作台开启 AI 增强并填密钥</span>';return;}
+  out.innerHTML='<span style="color:var(--cyan)">●</span> AI 正在解读（已发起 1 次调用）…';
   const sys='你是用户研究分析师。下面是一位由 VOC 生成的虚拟用户画像，请基于其真实原话做一轮更精准的解读（130字内）：①最真实的底层动机；②其公开声音与私态度之间是否存在 say-do gap、意味着什么；③对产品/运营的一个具体启示。';
-  const prof=`分群：${u.segName}（${u.band}）${u.extreme?'·极端/领先':''}${u.isKOL?'·KOL':''}\n原话：“${u.voice}”${u.voiceEN?('\n原文：'+u.voiceEN):''}\n情绪：${u.sentiment} · JTBD：${u.jtbd||'—'} · 星级：${u.star||'—'}\n痛点：${u.pain||'—'} · 需求：${u.need||'—'}\n私态度：${u.privateLabel} · 人口代理：${u.demo}`;
-  callLLM(sys, prof).then(t=>{ out.textContent=t||'（调用失败或模型无返回，请检查密钥 / 模型名 / 网络是否可达）'; });
+  const prof=`分群：${u.segName}（${u.band}）${u.extreme?'·极端/领先':''}${u.isKOL?'·KOL':''}\n原话："${u.voice}"${u.voiceEN?('\n原文：'+u.voiceEN):''}\n情绪：${u.sentiment} · JTBD：${u.jtbd||'—'} · 星级：${u.star||'—'}\n痛点：${u.pain||'—'} · 需求：${u.need||'—'}\n私态度：${u.privateLabel} · 人口代理：${u.demo}`;
+  aiBannerSingle('单卡 AI 解读', null, null);
+  callLLM(sys, prof).then(t=>{
+    if(t){
+      out.innerHTML='<div style="font-size:11px;color:var(--cyan);margin-bottom:6px">● AI 解读（大模型生成）</div>'+escHtml(t);
+    }else{
+      const r=(window.__aiLast&&window.__aiLast.reason)||'模型无返回';
+      out.innerHTML='<div style="color:var(--red);font-weight:600">⚠ 调用失败：'+r+'</div><div style="color:var(--tm);font-size:12px;margin-top:4px">（请检查密钥 / 模型名 / 网络是否可达）</div>';
+    }
+    aiBannerSingle('单卡 AI 解读', !!t, t?null:(window.__aiLast&&window.__aiLast.reason));
+  });
 }
 document.getElementById('aiThemeBtn').addEventListener('click',aiTheme);
 function initAI(){
@@ -1999,6 +2008,7 @@ initAI();
   async function inferPsycho(users){
     const cfg=getAICfg();
     if(!cfg.on||!cfg.key) return;
+    aiBannerStart('生成AI画像', users.length, 8);
     const B=8; let ok=0, calls=0;
     for(let i=0;i<users.length;i+=B){
       const batch=users.slice(i,i+B);
@@ -2016,16 +2026,67 @@ initAI();
           u.psycho={motive:o.motive||'',barrier:o.barrier||'',attach:o.attach||'',risk:o.risk||''};
         });
       }
+      aiBannerProgress(Math.min(i+B, users.length), users.length, ok, calls);
       if(typeof renderGrid==='function') renderGrid();
     }
-    const gt=document.getElementById('genTxt');
-    if(gt){
-      if(calls>0 && ok===0){
-        const r=(window.__aiLast&&window.__aiLast.reason)||'模型无返回';
-        gt.textContent='AI 接管未生效：'+r+'（当前展示规则版卡片，请检查密钥/模型名/网络）';
-      }else if(ok>0){
-        gt.textContent='AI 接管完成：'+users.length+' 位用户画像已由大模型生成（私态度 / 人物小传 / 心理推导层已更新）';
-      }
+    if(calls>0 && ok===0){
+      const r=(window.__aiLast&&window.__aiLast.reason)||'模型无返回';
+      aiBannerDone(false, r, calls, ok);
+      const gt=document.getElementById('genTxt');
+      if(gt) gt.textContent='AI 接管未生效：'+r+'（当前展示规则版卡片，请检查密钥/模型名/网络）';
+    }else if(ok>0){
+      aiBannerDone(true, null, calls, ok);
+      const gt=document.getElementById('genTxt');
+      if(gt) gt.textContent='AI 接管完成：'+users.length+' 位用户画像已由大模型生成（私态度 / 人物小传 / 心理推导层已更新）';
+    }else{
+      aiBannerDone(false, '本次没有调用', calls, ok);
+    }
+  }
+
+  /* ---------- AI 接管状态可视化（让用户随时看到 AI 有没有被调用/成功/为何失败） ---------- */
+  function aiBannerEnsure(){
+    let b=document.getElementById('aiTakeoverBanner');
+    if(b) return b;
+    b=document.createElement('div');
+    b.id='aiTakeoverBanner';
+    b.style.cssText='display:none;margin:14px 0;padding:14px 18px;border-radius:14px;border:1px solid rgba(0,212,255,.28);background:rgba(0,212,255,.08);font-size:13.5px;line-height:1.7;color:var(--tp)';
+    // 插到 genBtn 按钮后面
+    const anchor=document.getElementById('genWrap')||document.getElementById('consolePage')||document.body;
+    if(anchor===document.body){ document.body.insertBefore(b, document.body.firstChild); }
+    else{ anchor.parentNode.insertBefore(b, anchor.nextSibling); }
+    return b;
+  }
+  function aiBannerStart(label, total, batchSize){
+    const b=aiBannerEnsure();
+    window.__aiBanner={label,total,batchSize,done:0,ok:0,calls:0};
+    b.style.display='block';
+    b.innerHTML='<b style="color:var(--cyan)">'+(label||'AI 调用')+'</b> · 准备中… 共 <b>'+total+'</b> 目标，按 '+Math.ceil(total/batchSize)+' 批调用大模型';
+  }
+  function aiBannerProgress(done,total,ok,calls){
+    const b=document.getElementById('aiTakeoverBanner');
+    if(!b)return;
+    b.innerHTML='<b style="color:var(--cyan)">AI 接管进行中</b> · 已调用 '+calls+' 次 · 成功 '+ok+' 次 · 已处理 '+done+'/'+total+' 位用户卡';
+  }
+  function aiBannerDone(ok, reason, calls, okN){
+    const b=document.getElementById('aiTakeoverBanner');
+    if(!b)return;
+    if(ok){
+      b.style.background='rgba(52,211,153,.10)'; b.style.borderColor='rgba(52,211,153,.42)'; b.style.color='#6ee7b7';
+      b.innerHTML='<b>AI 接管成功</b> · 共 '+calls+' 次大模型调用 · 成功 '+okN+' · 卡片已更新「AI 已接管」标识';
+    }else{
+      b.style.background='rgba(239,68,68,.10)'; b.style.borderColor='rgba(239,68,68,.42)'; b.style.color='#fca5a5';
+      b.innerHTML='<b>AI 接管失败</b> · 共 '+calls+' 次调用 · 0 成功 · 原因：'+(reason||'未知错误')+' · 当前展示规则版卡片（请检查密钥/模型名/网络）';
+    }
+  }
+  function aiBannerSingle(label, ok, reason){
+    const b=aiBannerEnsure();
+    b.style.display='block';
+    if(ok){
+      b.style.background='rgba(52,211,153,.10)'; b.style.borderColor='rgba(52,211,153,.42)'; b.style.color='#6ee7b7';
+      b.innerHTML='<b>'+label+' 完成</b> · 大模型已响应';
+    }else{
+      b.style.background='rgba(239,68,68,.10)'; b.style.borderColor='rgba(239,68,68,.42)'; b.style.color='#fca5a5';
+      b.innerHTML='<b>'+label+' 失败</b> · '+(reason||'未知错误')+' · 请检查密钥/模型名/网络';
     }
   }
   function psychoHTML(u){
@@ -2051,8 +2112,8 @@ initAI();
         '<div class="kv"><b>情绪</b> '+u.sentiment+' · <b>JTBD</b> '+(u.jtbd||'—')+(u.star?' · <b>星级</b> '+u.star+'★':'')+(u.country?' · <b>地区</b> '+u.country:'')+'</div>'+
         '<div class="kv"><b>痛点</b> '+(u.pain||'—')+' · <b>需求</b> '+(u.need||'—')+'</div>'+
       '</div>'+
-      '<div class="layer a">'+
-        '<div class="lh"><svg class="ic-svg"><use href="#i-users"/></svg>生成层 · 算法生成（带置信度）</div>'+
+      '<div class="layer a" id="genLayer-' + u.id + '">'+
+        '<div class="lh"><svg class="ic-svg"><use href="#i-users"/></svg>'+((u.persona||u.psycho)?'生成层 · <span style="color:var(--cyan);font-weight:600">AI 已接管</span>（私态度/小传/心理层由大模型推导）':'生成层 · 算法生成（带置信度，AI 未接管）')+'</div>'+
         '<div class="kv"><b>私态度</b> '+u.privateLabel+confM+(u.gap?' · 与公开声音存在 say-do gap':'')+'</div>'+
         (u.persona?'<div class="kv"><b>人物小传</b> '+esc(u.persona)+'</div>':'')+
         '<div class="kv"><b>人口代理</b> '+u.demo+'<span class="conf conf-l">低置信·推断非真实</span></div>'+
@@ -2135,11 +2196,18 @@ initAI();
     const ai=getAICfg(); if(!ai.on||!ai.key) return;
     const out=document.getElementById('scenOut'); if(!out)return;
     const rep=document.createElement('div'); rep.className='glass report-card'; rep.style.cssText='padding:16px 18px;margin-top:14px;border:1px solid rgba(168,85,247,.32)';
-    rep.innerHTML='<div class="note" style="margin:0 0 8px"><b style="color:var(--purple)">AI 接管解读（大模型生成 · 非规则结论）</b></div><div class="ai-rep" style="font-size:13.5px;line-height:1.75;color:var(--ts);white-space:pre-wrap">AI 正在解读压力测试结果…</div>';
+    rep.innerHTML='<div class="note" style="margin:0 0 8px"><b style="color:var(--purple)">AI 接管解读</b> · <span style="color:var(--cyan)">大模型生成 · 非规则结论</span> · <span style="font-size:11px;color:var(--tm)">调用中…</span></div><div class="ai-rep" style="font-size:13.5px;line-height:1.75;color:var(--ts);white-space:pre-wrap">AI 正在解读压力测试结果…</div>';
     out.appendChild(rep);
     const sys='你是资深用户研究分析师，也是产品/增长顾问。下面是一份由规则引擎产出的虚拟用户压力测试结构化数据（含真实原话引用）。请基于这些数据，用「AI 接管」的视角做完整解读，不要只复述数字，要给出判断：①反对的深层逻辑（为什么这些人会反对，背后的心理/场景机制）；②逐分群解读（8 个分群各自的态度与最该警惕的点）；③最该优先解决的一个矛盾与一句可落地改进建议；④如果这是上市前，给一句「能不能上」的结论与前置条件。语言简洁、有洞察、可直接给老板看。';
+    aiBannerSingle('压力测试解读', null, null);
     callLLM(sys, lastStressCtx+'\n\n（以上是规则引擎的结构化结论，请据此做你的完整解读）').then(t=>{
       const el=rep.querySelector('.ai-rep'); if(el) el.textContent = t || '（调用失败或模型无返回，请检查密钥 / 模型名 / 网络是否可达）';
+      const statusEl=rep.querySelector('.note span:last-child');
+      if(statusEl){
+        if(t){ statusEl.textContent='已生成（'+t.length+' 字）'; statusEl.style.color='#6ee7b7'; }
+        else { const r=(window.__aiLast&&window.__aiLast.reason)||'模型无返回'; statusEl.textContent='失败：'+r; statusEl.style.color='#fca5a5'; }
+      }
+      aiBannerSingle('压力测试解读', !!t, t?null:(window.__aiLast&&window.__aiLast.reason));
     });
   }
 
@@ -2234,6 +2302,7 @@ initAI();
     window.setRatioPreset=setRatioPreset; window.renderSegSliders=renderSegSliders; window.refreshStressTargets=refreshStressTargets;
     window.agentSummary=agentSummary; window.agentSystem=agentSystem; window.agentSend=agentSend; window.agentReset=agentReset;
     window.runStress=runStress; window.genUsers=genUsers; window.cardHTML=cardHTML; window.inferPsycho=inferPsycho;
+    window.aiBannerEnsure=aiBannerEnsure; window.aiBannerStart=aiBannerStart; window.aiBannerProgress=aiBannerProgress; window.aiBannerDone=aiBannerDone; window.aiBannerSingle=aiBannerSingle;
   }
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',bind); else bind();
   renderProductForm();
