@@ -230,6 +230,38 @@ body.light .tab:hover{background:rgba(0,0,0,.04)}
 .tabpane{animation:fade .35s var(--ease)}
 @keyframes fade{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
 @media(max-width:980px){.cols-4{grid-template-columns:repeat(2,1fr)}.cols-3{grid-template-columns:1fr}.stats{grid-template-columns:repeat(2,1fr)}.cmp{grid-template-columns:1fr}.cmp .mid{writing-mode:horizontal-tb}}
+
+/* ===== 新模块：产品档案 / 智能体 / 心理层 / 比例 / 压力表格 ===== */
+.tagbox{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:10px 12px;border:1px solid var(--border);border-radius:10px;background:rgba(255,255,255,.03)}
+body.light .tagbox{border-color:var(--border-l);background:rgba(0,0,0,.03)}
+.tag{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:20px;background:rgba(0,212,255,.12);color:#7dd3fc;font-size:13px}
+.tag-x{cursor:pointer;opacity:.7;font-weight:700}
+.tag-x:hover{opacity:1}
+.tag-in{border:none;background:transparent;color:var(--tp);outline:none;min-width:120px;flex:1;font-size:13px}
+.part-row{display:flex;gap:8px;align-items:center;margin-bottom:8px}
+.part-name,.part-desc{flex:1;padding:9px 12px;border:1px solid var(--border);border-radius:9px;background:rgba(255,255,255,.03);color:var(--tp);font-size:13px}
+body.light .part-name,body.light .part-desc{border-color:var(--border-l);background:rgba(0,0,0,.03)}
+.part-x{cursor:pointer;color:#ff7a8a;font-size:18px;line-height:1;padding:0 6px}
+.mini-chk{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--ts);cursor:pointer;user-select:none}
+.mini-chk input{accent-color:var(--cyan)}
+.agent-msgs{display:flex;flex-direction:column;gap:12px;max-height:460px;overflow-y:auto;padding:6px 4px;margin:6px 0}
+.amsg{border-radius:12px;padding:12px 15px;font-size:13.5px;line-height:1.7;white-space:pre-wrap}
+.amsg.u{background:rgba(0,212,255,.1);border:1px solid rgba(0,212,255,.25);align-self:flex-end;max-width:82%}
+.amsg.a{background:rgba(168,85,247,.1);border:1px solid rgba(168,85,247,.28);align-self:flex-start;max-width:90%}
+.amsg .who{font-size:11px;opacity:.6;margin-bottom:4px}
+.agent-input{display:flex;gap:10px;align-items:flex-end;margin-top:8px}
+.agent-input textarea{flex:1;min-height:54px;resize:vertical}
+.agent-input .btn{padding:12px 22px;font-size:14px}
+.psy-layer .lh{margin-top:2px}
+.psy-row{font-size:12.5px;line-height:1.6;color:var(--ts);margin-top:6px}
+.psy-row b{color:#d8b4fe;font-weight:650;margin-right:4px}
+.psy-row .conf{margin-left:6px}
+.stress-table{width:100%;border-collapse:collapse;margin-top:14px;font-size:13px}
+.stress-table th,.stress-table td{padding:9px 10px;text-align:left;border-bottom:1px solid var(--border)}
+body.light .stress-table th,body.light .stress-table td{border-bottom-color:var(--border-l)}
+.stress-table th{color:var(--ts);font-weight:600;font-size:12px}
+.stress-table td .bar{display:inline-block;height:8px;border-radius:4px;vertical-align:middle;margin-right:6px}
+.report-card{margin-top:16px;border:1px solid rgba(168,85,247,.3);border-radius:14px;padding:16px 18px}
 </style>
 </head>
 <body class="dark">
@@ -279,8 +311,10 @@ body.light .tab:hover{background:rgba(0,0,0,.04)}
   <div class="brand"><div class="brand-logo"><svg class="ic-svg"><use href="#w-fish"/></svg></div>虚拟用户压力测试</div>
   <div class="nav-right">
     <a class="nav-link nav-pg on" data-page="console" href="#">工作台</a>
+    <a class="nav-link nav-pg" data-page="product" href="#">产品档案</a>
     <a class="nav-link nav-pg" data-page="users" href="#">虚拟用户卡</a>
     <a class="nav-link nav-pg" data-page="stress" href="#">压力测试结果</a>
+    <a class="nav-link nav-pg" data-page="agent" href="#">智能体</a>
     <span class="nav-sep"></span>
     <a class="nav-link nav-pg" data-page="principle" href="#">运行原理</a>
     <a class="nav-link nav-pg" data-page="intro" href="#">介绍</a>
@@ -696,6 +730,41 @@ body.light .tab:hover{background:rgba(0,0,0,.04)}
           <button class="btn btn-sec" onclick="document.getElementById('vocIn').value='';loadSource();" style="padding:10px 18px;font-size:13px">恢复当前源</button>
         </div>
       </div>
+      <div class="ctrl-head"><svg class="ic-svg"><use href="#i-target"/></svg>目的筛选（对齐你的产品）</div>
+      <div class="row" style="flex-direction:column;align-items:stretch;gap:10px">
+        <div><label>你的产品目的 / 想找什么用户</label><div class="hint">例：屁股部位大重量，用户在意静音和材质。AI 会按此语义从已载入 VOC 中筛出相关评价（纯 LLM，需开启 AI 增强并填密钥）。</div></div>
+        <textarea id="purposeTxt" placeholder="描述你的产品与想找的用户类型…"></textarea>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+          <button class="btn btn-primary" onclick="aiScreenVOC()" id="aiScreenBtn">AI 按目的筛选 VOC</button>
+          <span id="purposeStat" style="font-size:12px;color:var(--tm);align-self:center">未筛选 · 使用全部 VOC</span>
+        </div>
+      </div>
+      <div class="row" style="flex-direction:column;align-items:stretch;gap:8px">
+        <div><label>属性基础筛选（不做 AI，先做硬过滤）</label><div class="hint">按部位 / 重量做关键词硬匹配，作为 AI 精筛的候选池，也可单独使用。</div></div>
+        <div style="display:flex;gap:18px;flex-wrap:wrap;align-items:center">
+          <span style="font-size:13px;color:var(--ts)">部位：</span>
+          <label class="mini-chk"><input type="checkbox" id="fq_part_pg" value="屁股"> 屁股</label>
+          <label class="mini-chk"><input type="checkbox" id="fq_part_body" value="身体"> 身体</label>
+          <span style="font-size:13px;color:var(--ts);margin-left:8px">重量：</span>
+          <label class="mini-chk"><input type="checkbox" id="fq_w_big" value="大"> 大重量</label>
+          <label class="mini-chk"><input type="checkbox" id="fq_w_small" value="小"> 小重量</label>
+          <button class="btn btn-sec" onclick="quickFilterVOC()" style="padding:8px 14px;font-size:12px">应用属性筛选</button>
+          <button class="btn btn-sec" onclick="clearFilterVOC()" style="padding:8px 14px;font-size:12px">取消筛选</button>
+        </div>
+      </div>
+
+      <div class="ctrl-head"><svg class="ic-svg"><use href="#i-sliders"/></svg>用户类型比例（100 个里各类型占比）</div>
+      <div class="row" style="flex-direction:column;align-items:stretch;gap:10px">
+        <div><label>比例预设</label><div class="hint">极端用户 = 拉高痛点/差评传播；质量用户 = 拉高品质党；当前分布 = 按已载入 VOC 实际占比；自定义 = 手调。</div></div>
+        <div class="seg" id="ratioSeg">
+          <button data-r="current">当前分布</button>
+          <button data-r="extreme">极端用户</button>
+          <button data-r="quality">质量用户</button>
+          <button class="on" data-r="custom">自定义</button>
+        </div>
+      </div>
+      <div class="sliders" id="segSliders"></div>
+
       <div class="ctrl-head"><svg class="ic-svg"><use href="#i-zap"/></svg>生成</div>
       <div class="row" style="border-bottom:none">
         <div><label>随机种子</label><div class="hint">相同种子 + 相同参数 = 相同群体（便于对比方案）</div></div>
@@ -754,6 +823,14 @@ body.light .tab:hover{background:rgba(0,0,0,.04)}
         <div class="kicker"><svg class="ic-svg"><use href="#w-users"/></svg>VIRTUAL USERS · 虚拟用户卡</div>
         <h2>这群虚拟用户长什么样</h2>
         <p>每一张卡都是「锚定真实 VOC 原话 + 算法生成态度」的双层结构，可追溯出处。可筛选分群、只看极端用户、按原话关键词搜索。</p>
+      </div>
+      <div class="psy-toggles" style="display:flex;gap:14px;flex-wrap:wrap;align-items:center;margin:14px 0">
+        <span style="font-size:13px;color:var(--ts)">心理推导层显示：</span>
+        <label class="mini-chk"><input type="checkbox" id="pd_motive" checked onchange="window.__psychoDims.motive=this.checked"> 真实动机(所言vs所想)</label>
+        <label class="mini-chk"><input type="checkbox" id="pd_barrier" checked onchange="window.__psychoDims.barrier=this.checked"> 潜意识障碍</label>
+        <label class="mini-chk"><input type="checkbox" id="pd_attach" checked onchange="window.__psychoDims.attach=this.checked"> 情感依附点</label>
+        <label class="mini-chk"><input type="checkbox" id="pd_risk" checked onchange="window.__psychoDims.risk=this.checked"> 风险规避倾向</label>
+        <button class="btn btn-sec" onclick="renderGrid()" style="padding:7px 14px;font-size:12px">应用显示</button>
       </div>
 
   
@@ -821,14 +898,21 @@ body.light .tab:hover{background:rgba(0,0,0,.04)}
       </div>
 
       <div id="stressReal" class="glass scen" style="display:none">
-        <div class="srow">
+        <div class="srow" style="flex-wrap:wrap;gap:10px">
           <select id="scenSel">
             <option value="social">社媒内容传播</option>
             <option value="launch">新品上架</option>
             <option value="promo">优惠活动</option>
           </select>
-          <input type="text" id="scenBrief" placeholder="可选：一句话描述内容 / 卖点，如「199 元平替精华，主打成分科普」">
+          <select id="stressTarget">
+            <option value="global">全局压力测试</option>
+            <option value="sell">按卖点拆开测</option>
+            <option value="part">按部位拆开测</option>
+          </select>
+          <select id="stressTargetVal" style="display:none"></select>
+          <input type="text" id="scenBrief" placeholder="可选：一句话描述内容 / 卖点">
           <button class="btn btn-primary" onclick="runStress()" style="padding:11px 22px;font-size:14px">运行压力测试</button>
+          <button class="btn btn-sec" onclick="runStress(true)" style="padding:11px 22px;font-size:13px">单独生成本报告</button>
         </div>
         <div id="scenOut"></div>
         <div class="glass" id="aiTheme" style="margin-top:14px;padding:16px 18px;display:none">
@@ -848,6 +932,65 @@ body.light .tab:hover{background:rgba(0,0,0,.04)}
           </div>
           <div id="aiCalibOut1" style="margin-top:12px;font-size:13px;line-height:1.7;color:var(--ts);white-space:pre-wrap"></div>
           <div id="aiCalibOut2" style="margin-top:10px;font-size:13px;line-height:1.7;color:var(--ts);white-space:pre-wrap"></div>
+        </div>
+      </div>
+    </section>
+  </section>
+
+  <section class="page" id="page-product" style="display:none">
+    <section class="section">
+      <div class="sec-head">
+        <div class="kicker"><svg class="ic-svg"><use href="#i-doc"/></svg>PRODUCT · 产品档案</div>
+        <h2>先讲清楚你要测的是什么产品</h2>
+        <p>填得越细，下游压力测试与智能体分析越准。部位（屁股 / 身体）、重量（大 / 小）等属性会用于「基础筛选」匹配用户；卖点 / 分框部位 / 功能 / 体验 / 反馈会喂给压力测试与智能体作为上下文。</p>
+      </div>
+      <div class="glass ctrl">
+        <div class="ctrl-head"><svg class="ic-svg"><use href="#i-doc"/></svg>基础属性</div>
+        <div class="row"><div><label>品类</label><div class="hint">例：成人用品 / 3C / 护肤</div></div><input type="text" id="pf_category" placeholder="如：成人用品·器具"></div>
+        <div class="row"><div><label>部位类型</label><div class="hint">用于基础筛选匹配</div></div>
+          <select id="pf_part"><option>通用</option><option>屁股</option><option>身体</option><option>混合</option></select></div>
+        <div class="row"><div><label>重量</label><div class="hint">大 / 中 / 小，用于基础筛选</div></div>
+          <select id="pf_weight"><option>中</option><option>大</option><option>小</option></select></div>
+        <div class="row"><div><label>价格带</label><div class="hint">目标售价区间</div></div><input type="text" id="pf_price" placeholder="如：199–299 元"></div>
+
+        <div class="ctrl-head"><svg class="ic-svg"><use href="#i-zap"/></svg>卖点与功能</div>
+        <div class="row" style="flex-direction:column;align-items:stretch;gap:8px"><div><label>主要卖点</label><div class="hint">回车添加，压力测试可按卖点单独拆开测</div></div><div class="tagbox" id="pf_sell"></div></div>
+        <div class="row" style="flex-direction:column;align-items:stretch;gap:8px"><div><label>产品功能</label><div class="hint">回车添加</div></div><div class="tagbox" id="pf_func"></div></div>
+        <div class="row" style="flex-direction:column;align-items:stretch;gap:8px"><div><label>分框部位</label><div class="hint">把产品拆成具体部位，压力测试可按部位单独测</div></div><div id="pf_parts"></div></div>
+
+        <div class="ctrl-head"><svg class="ic-svg"><use href="#i-users"/></svg>使用与反馈</div>
+        <div class="row" style="flex-direction:column;align-items:stretch;gap:8px"><div><label>使用体验 / 场景</label></div><textarea id="pf_exp" placeholder="用户会在什么场景用、体验预期"></textarea></div>
+        <div class="row" style="flex-direction:column;align-items:stretch;gap:8px"><div><label>基本反馈 / 已知问题</label></div><textarea id="pf_base" placeholder="已知差评点或风险（可选）"></textarea></div>
+
+        <button class="btn btn-primary" onclick="saveProduct()" style="width:100%;margin-top:8px">保存产品档案</button>
+        <span id="pf_saveHint" style="font-size:12px;color:var(--tp);margin-left:10px"></span>
+      </div>
+    </section>
+  </section>
+
+  <section class="page" id="page-agent" style="display:none">
+    <section class="section">
+      <div class="sec-head">
+        <div class="kicker"><svg class="ic-svg"><use href="#i-zap"/></svg>AGENT · 智能体对话</div>
+        <h2>把压力测试打包给智能体，多轮深挖</h2>
+        <p>智能体的系统提示词 = 你的产品档案 + 筛选目的 + 用户群摘要 + 最近一次压力测试报告。它不是凭空聊，而是基于你刚跑的数据做深度 / 扩散分析。多轮对话，越问越透。</p>
+      </div>
+      <div class="glass ctrl" style="display:flex;flex-direction:column">
+        <div class="row" style="border-bottom:none">
+          <div><label>分析模式</label><div class="hint">深度=聚焦收敛；扩散=联想发散</div></div>
+          <div class="seg" id="agentModeSeg">
+            <button class="on" data-m="deep">深度</button>
+            <button data-m="wide">扩散</button>
+          </div>
+        </div>
+        <div id="agentMsgs" class="agent-msgs"></div>
+        <div class="agent-input">
+          <textarea id="agentInput" placeholder="基于上面的压力测试，问任何问题…（如：屁股部位大重量用户最可能因为什么放弃？）"></textarea>
+          <button class="btn btn-primary" onclick="agentSend()" id="agentSendBtn">发送</button>
+        </div>
+        <div style="display:flex;gap:10px;margin-top:8px">
+          <button class="btn btn-sec" onclick="agentReset()">清空对话</button>
+          <span id="agentHint" style="font-size:12px;color:var(--ts);align-self:center"></span>
         </div>
       </div>
     </section>
@@ -1585,6 +1728,461 @@ function showResultsReady(){
 }
 document.querySelectorAll('.nav-pg').forEach(a=>a.addEventListener('click',e=>{e.preventDefault();showPage(a.dataset.page);}));
 initAI();
+</script>
+
+<script>
+/* ====================== 新模块 A–F（隔离脚本块，解析失败不影响核心页） ====================== */
+(function(){
+  'use strict';
+  const $ = id => document.getElementById(id);
+  function saveLS(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}}
+  function getLS(k,d){try{const x=localStorage.getItem(k);return x?JSON.parse(x):d;}catch(e){return d;}}
+  function esc(s){return (s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+
+  // 全局状态
+  window.PRODUCT = getLS('vust_product', {category:'',partType:'通用',weight:'中',priceBand:'',sellingPoints:[],parts:[],functions:[],experience:'',baseline:''});
+  window.VOC_FILTERED = null;
+  window.__useFiltered = false;
+  window.__segRatios = null;
+  window.__psychoDims = {motive:true,barrier:true,attach:true,risk:true};
+  window.__agentMsgs = [];
+  window.__agentMode = 'deep';
+
+  const SEG_KEYS = ['innovator','price','quality','watcher','pain','kol','critic','competitor'];
+  const SEG_NAME = {innovator:'尝鲜型',price:'价格敏感者',quality:'品质党',watcher:'观望群体',pain:'痛点击中者',kol:'KOL/意见领袖',critic:'差评传播者',competitor:'竞品用户'};
+
+  /* ---------- A. 产品档案 ---------- */
+  function renderProductForm(){
+    const p = window.PRODUCT;
+    if($('pf_category'))$('pf_category').value=p.category||'';
+    if($('pf_part'))$('pf_part').value=p.partType||'通用';
+    if($('pf_weight'))$('pf_weight').value=p.weight||'中';
+    if($('pf_price'))$('pf_price').value=p.priceBand||'';
+    if($('pf_exp'))$('pf_exp').value=p.experience||'';
+    if($('pf_base'))$('pf_base').value=p.baseline||'';
+    renderTags('pf_sell', p.sellingPoints||[]);
+    renderTags('pf_func', p.functions||[]);
+    renderParts(p.parts||[]);
+  }
+  function renderTags(id, arr){
+    const box=$(id); if(!box)return; box.innerHTML='';
+    arr.forEach(t=>{
+      const el=document.createElement('span'); el.className='tag';
+      el.innerHTML=esc(t)+'<span class="tag-x">×</span>';
+      el.querySelector('.tag-x').onclick=()=>{ box.removeChild(el); arr.splice(arr.indexOf(t),1); refreshStressTargets(); };
+      box.appendChild(el);
+    });
+    const inp=document.createElement('input'); inp.className='tag-in'; inp.placeholder='输入后回车添加';
+    inp.onkeydown=e=>{ if(e.key==='Enter'&&inp.value.trim()){ const v=inp.value.trim(); inp.value=''; if(arr.indexOf(v)<0)arr.push(v); renderProductForm(); refreshStressTargets(); } };
+    box.appendChild(inp);
+  }
+  function renderParts(arr){
+    const box=$('pf_parts'); if(!box)return; box.innerHTML='';
+    arr.forEach((pt,i)=>{
+      const row=document.createElement('div'); row.className='part-row';
+      row.innerHTML='<input class="part-name" placeholder="部位名"><input class="part-desc" placeholder="该部位说明"><span class="part-x">×</span>';
+      row.querySelector('.part-name').value=pt.name||'';
+      row.querySelector('.part-desc').value=pt.desc||'';
+      row.querySelector('.part-name').oninput=e=>{pt.name=e.target.value;};
+      row.querySelector('.part-desc').oninput=e=>{pt.desc=e.target.value;};
+      row.querySelector('.part-x').onclick=()=>{arr.splice(i,1);renderParts(arr);refreshStressTargets();};
+      box.appendChild(row);
+    });
+    const add=document.createElement('button'); add.className='btn btn-sec'; add.textContent='+ 添加分框部位'; add.style.marginTop='8px';
+    add.onclick=()=>{arr.push({name:'',desc:''});renderParts(arr);};
+    box.appendChild(add);
+  }
+  function saveProduct(){
+    const p=window.PRODUCT;
+    p.category=$('pf_category')?$('pf_category').value.trim():'';
+    p.partType=$('pf_part')?$('pf_part').value:'通用';
+    p.weight=$('pf_weight')?$('pf_weight').value:'中';
+    p.priceBand=$('pf_price')?$('pf_price').value.trim():'';
+    p.experience=$('pf_exp')?$('pf_exp').value.trim():'';
+    p.baseline=$('pf_base')?$('pf_base').value.trim():'';
+    saveLS('vust_product',p);
+    if($('pf_saveHint'))$('pf_saveHint').textContent='已保存（仅本机）';
+    setTimeout(()=>{if($('pf_saveHint'))$('pf_saveHint').textContent='';},2000);
+    refreshStressTargets();
+  }
+
+  /* ---------- B. 目的筛选 + 属性快筛 ---------- */
+  function flattenVOC(src){
+    const out=[];
+    Object.keys(src||{}).forEach(seg=>{(src[seg]||[]).forEach(v=>{ out.push(Object.assign({_seg:seg}, v||{})); });});
+    return out;
+  }
+  function groupBySeg(list){
+    const g={};
+    list.forEach(v=>{ const k=v._seg||'quality'; (g[k]=g[k]||[]).push(v); });
+    return g;
+  }
+  function applyFiltered(grouped){
+    window.VOC_FILTERED = grouped;
+    window.__useFiltered = true;
+    const n = flattenVOC(grouped).length;
+    if($('purposeStat'))$('purposeStat').textContent='已筛选 · 使用 '+n+' 条（'+Object.keys(grouped).length+' 分群）';
+    if($('vocStat'))$('vocStat').textContent='当前：筛选后 '+n+' 条（'+Object.keys(grouped).length+' 分群）';
+  }
+  function quickFilterVOC(){
+    const src = (window.VOC_FILTERED && window.__useFiltered)? window.VOC_FILTERED : VOC;
+    let list = flattenVOC(src);
+    const parts=[]; if($('fq_part_pg')&&$('fq_part_pg').checked)parts.push('屁股','菊','后庭','臀'); if($('fq_part_body')&&$('fq_part_body').checked)parts.push('身体','胸','腹','背','腿','手','脸');
+    const ws=[]; if($('fq_w_big')&&$('fq_w_big').checked)ws.push('大','重','重量','沉','加厚','加大'); if($('fq_w_small')&&$('fq_w_small').checked)ws.push('小','轻','便携','迷你','小巧');
+    if(parts.length||ws.length){
+      list = list.filter(v=>{
+        const t=((v.voice||'')+' '+(v.pain||'')+' '+(v.need||'')).toLowerCase();
+        const hitP = parts.length? parts.some(w=>t.indexOf(w.toLowerCase())>=0) : true;
+        const hitW = ws.length? ws.some(w=>t.indexOf(w.toLowerCase())>=0) : true;
+        return hitP && hitW;
+      });
+    }
+    const grouped = groupBySeg(list);
+    applyFiltered(grouped);
+    if($('purposeStat'))$('purposeStat').textContent='属性筛选 · 命中 '+list.length+' 条（'+Object.keys(grouped).length+' 分群）';
+  }
+  function clearFilterVOC(){
+    window.VOC_FILTERED=null; window.__useFiltered=false;
+    if($('purposeStat'))$('purposeStat').textContent='未筛选 · 使用全部 VOC';
+    if($('vocStat'))$('vocStat').textContent='当前：示例数据集';
+  }
+  async function aiScreenVOC(){
+    const cfg=getAICfg();
+    if(!cfg.on||!cfg.key){ if($('purposeStat'))$('purposeStat').textContent='请先在工作台开启 AI 增强并填密钥'; return; }
+    const purpose=($('purposeTxt')?$('purposeTxt').value.trim():'');
+    if(!purpose){ if($('purposeStat'))$('purposeStat').textContent='请先填写产品目的'; return; }
+    const src = (window.VOC_FILTERED && window.__useFiltered)? window.VOC_FILTERED : VOC;
+    let list = flattenVOC(src);
+    if(list.length>800) list = list.slice(0,800);
+    if(!list.length){ if($('purposeStat'))$('purposeStat').textContent='暂无 VOC 可筛，请先载入数据'; return; }
+    if($('aiScreenBtn'))$('aiScreenBtn').textContent='AI 筛选中…';
+    if($('purposeStat'))$('purposeStat').textContent='AI 按目的筛选中（'+list.length+' 条）…';
+    const kept=[];
+    for(let i=0;i<list.length;i+=25){
+      const batch=list.slice(i,i+25);
+      const sys='你是用户研究筛选器。下面是一批真实用户评价（含分群标签）。给定产品目的，判断每条是否与目的相关、是否值得纳入该产品的虚拟用户研究。只输出 JSON 数组，长度与输入一致，每项 {keep:0或1, attr:相关产品属性标签数组}。不要解释。';
+      const user=batch.map((v,idx)=>(idx+1)+'. ['+(v._seg||'')+'] '+(v.voice||'').slice(0,120)).join('\n');
+      let res=null;
+      try{ res = await callLLM(sys, user); }catch(e){ res=null; }
+      let arr=null;
+      if(res){ try{ const m=res.match(/\[[\s\S]*\]/); arr=m?JSON.parse(m[0]):null; }catch(e){ arr=null; } }
+      if(Array.isArray(arr)){
+        batch.forEach((v,k)=>{ const o=arr[k]; if(o&&o.keep===1) kept.push(v); });
+      }else{
+        batch.forEach(v=>kept.push(v));
+      }
+    }
+    const grouped=groupBySeg(kept);
+    applyFiltered(grouped);
+    if($('aiScreenBtn'))$('aiScreenBtn').textContent='AI 按目的筛选 VOC';
+  }
+
+  /* ---------- C. 用户类型比例 ---------- */
+  function renderSegSliders(){
+    const box=$('segSliders'); if(!box)return; box.innerHTML='';
+    const ratios = window.__segRatios || {};
+    SEG_KEYS.forEach(k=>{
+      const v = (ratios[k]!=null)? ratios[k] : 12;
+      const row=document.createElement('div'); row.className='sl';
+      row.innerHTML='<span>'+SEG_NAME[k]+'</span><input type="range" min="0" max="100" value="'+v+'" data-seg="'+k+'"><b>'+v+'</b>';
+      row.querySelector('input').addEventListener('input',e=>{
+        row.querySelector('b').textContent=e.target.value;
+        if(!window.__segRatios) window.__segRatios={};
+        window.__segRatios[k]=+e.target.value;
+      });
+      box.appendChild(row);
+    });
+  }
+  function setRatioPreset(r){
+    if(r==='current'){
+      const counts={}; let tot=0;
+      Object.keys(VOC||{}).forEach(k=>{counts[k]=(VOC[k]||[]).length; tot+=counts[k];});
+      const ratios={};
+      SEG_KEYS.forEach(k=>{ ratios[k]= tot? Math.round((counts[k]||0)/tot*100): 12; });
+      window.__segRatios=ratios;
+    }else if(r==='extreme'){
+      window.__segRatios={innovator:5,price:15,quality:15,watcher:10,pain:25,kol:10,critic:15,competitor:5};
+    }else if(r==='quality'){
+      window.__segRatios={innovator:5,price:10,quality:40,watcher:15,pain:10,kol:8,critic:7,competitor:5};
+    }else{
+      if(!window.__segRatios){ window.__segRatios={}; SEG_KEYS.forEach(k=>window.__segRatios[k]=12); }
+    }
+    renderSegSliders();
+  }
+
+  /* ---------- 重写 genUsers：分群比例 + 筛选源 ---------- */
+  genUsers = function(N){
+    const seed=+($('seedN')?$('seedN').value:1)||1;
+    const rng=mulberry32(seed);
+    let props;
+    if(typeof mode!=='undefined' && mode==='custom'){
+      const v=[...document.querySelectorAll('#sliders input')].map(x=>+x.value);
+      const sum=v.reduce((a,b)=>a+b,0)||1;
+      props=BANDS.map((b,i)=>({...b,p:v[i]/sum}));
+    }else props=BANDS;
+    const cum=[];let s=0;props.forEach(b=>{s+=b.p;cum.push(s);});
+    const src = (window.VOC_FILTERED && window.__useFiltered && Object.keys(window.VOC_FILTERED).length)? window.VOC_FILTERED : VOC;
+    const sr=window.__segRatios;
+    const segCum=[];let ss=0;
+    SEG_KEYS.forEach(k=>{ const w=(sr&&sr[k]!=null)?sr[k]:(1/SEG_KEYS.length); ss+=w; segCum.push(ss); });
+    const extremePct=(typeof extR!=='undefined'&&extR)?(+extR.value)/100:0.1;
+    const arr=[];
+    for(let i=0;i<N;i++){
+      const r=rng();
+      let bi=0;while(bi<cum.length-1&&r>cum[bi])bi++;
+      const band=BANDS[bi];
+      const r2=rng();
+      let sk=0;while(sk<segCum.length-1&&r2>segCum[sk])sk++;
+      const segKey=SEG_KEYS[sk];
+      const seg=SEGMENTS.find(x=>x.key===segKey);
+      let pool=src[segKey];
+      if(!pool||!pool.length)pool=Object.values(src).flat();
+      const v=pool[Math.floor(rng()*pool.length)]||{voice:'',sentiment:'',jtbd:'',pain:'',need:''};
+      const stated=seg.x;
+      let priv=Math.min(1,Math.max(0,seg.x+(rng()*2-1)*0.18));
+      const gap=Math.abs(priv-stated)>0.22;
+      const demo=DEMO_PROXY[segKey];
+      const u={
+        id:i+1,segKey,segName:seg.name,color:seg.color,
+        band:band.name,bandRank:band.rank,
+        voice:v.voice,sentiment:v.sentiment,jtbd:v.jtbd,pain:v.pain,need:v.need,
+        vstar:v.star,
+        refPrice:extractPrice(v.voice),intensity:computeIntensity(v.voice,v.star),
+        stated,private:priv,privateLabel:stanceLabel(priv),gap,
+        isKOL:seg.isKOL,activity:seg.activity,extreme:false,
+        demo,influence:1,psycho:null,
+        _es:band.rank/5*0.5+(seg.isKOL?0.5:0)+seg.activity*0.3+rng()*0.2
+      };
+      arr.push(u);
+    }
+    const sorted=[...arr].sort((a,b)=>b._es-a._es);
+    const extN=Math.round(N*extremePct);
+    for(let i=0;i<extN;i++)sorted[i].extreme=true;
+    const total=arr.length;
+    arr.forEach(u=>{const rank=sorted.indexOf(u);u.influence=+(1+paretoK*Math.pow(1-rank/total,2)+(u.isKOL?0.5:0)).toFixed(2);});
+    const cfg=getAICfg();
+    if(cfg.on&&cfg.key){ inferPsycho(arr); }
+    return arr;
+  };
+
+  /* ---------- D. 心理推导层 ---------- */
+  async function inferPsycho(users){
+    const cfg=getAICfg();
+    if(!cfg.on||!cfg.key) return;
+    const B=6;
+    for(let i=0;i<users.length;i+=B){
+      const batch=users.slice(i,i+B);
+      const sys='你是消费心理分析师。下面 N 位虚拟用户的「真实原话」是锚定层（固定事实，不可更改）。请基于每位真实原话推导其心理画像，输出 JSON 数组，长度与用户数一致，每位含：motive（真实动机：所言 vs 所想）、barrier（潜意识障碍）、attach（情感依附点）、risk（风险规避倾向），每字段一句话。只输出 JSON。';
+      const user=batch.map((u,idx)=>(idx+1)+'. 分群='+u.segName+' 原话：“'+(u.voice||'').slice(0,140)+'”').join('\n');
+      let res=null; try{ res=await callLLM(sys,user); }catch(e){ res=null; }
+      let arr=null;
+      if(res){ try{ const m=res.match(/\[[\s\S]*\]/); arr=m?JSON.parse(m[0]):null; }catch(e){ arr=null; } }
+      if(Array.isArray(arr)){
+        batch.forEach((u,k)=>{ const o=arr[k]; if(o) u.psycho={motive:o.motive||'',barrier:o.barrier||'',attach:o.attach||'',risk:o.risk||''}; });
+      }
+      if(typeof renderGrid==='function') renderGrid();
+    }
+  }
+  function psychoHTML(u){
+    const d=window.__psychoDims; const p=u.psycho;
+    if(!p) return '';
+    const rows=[];
+    if(d.motive&&p.motive)rows.push('<div class="psy-row"><b>真实动机</b>'+esc(p.motive)+'<span class="conf conf-m">所言vs所想</span></div>');
+    if(d.barrier&&p.barrier)rows.push('<div class="psy-row"><b>潜意识障碍</b>'+esc(p.barrier)+'</div>');
+    if(d.attach&&p.attach)rows.push('<div class="psy-row"><b>情感依附点</b>'+esc(p.attach)+'</div>');
+    if(d.risk&&p.risk)rows.push('<div class="psy-row"><b>风险规避倾向</b>'+esc(p.risk)+'</div>');
+    if(!rows.length) return '';
+    return '<div class="layer psy-layer"><div class="lh"><svg class="ic-svg"><use href="#i-zap"/></svg>心理推导层 · AI 基于真实原话推导（可自定义维度）</div>'+rows.join('')+'</div>';
+  }
+  cardHTML = function(u,idx){
+    const badges='<div class="badges">'+(u.extreme?'<span class="badge b-ext">极端/领先</span>':'')+(u.isKOL?'<span class="badge b-kol">KOL</span>':'')+'<span class="badge b-band">'+u.band+'</span></div>';
+    const confM=u.gap?'<span class="conf conf-m">中置信</span>':'<span class="conf conf-m">中置信</span>';
+    return '<div class="glass ucard" data-seg="'+u.segKey+'" data-ext="'+u.extreme+'" data-idx="'+idx+'" data-voice="'+esc(u.voice)+'">'+
+      '<div class="uh"><div class="who"><div class="av" style="background:'+u.color+'">'+u.segName[0]+'</div>'+
+      '<div><div class="nm">'+u.segName+' #'+u.id+'</div><div class="sb">影响力权重 '+u.influence+' · 活跃度 '+((u.activity*100|0))+'%</div></div></div>'+badges+'</div>'+
+      '<div class="layer g">'+
+        '<div class="lh"><svg class="ic-svg"><use href="#i-doc"/></svg>锚定层 · 必须真实（来自 VOC）</div>'+
+        '<div class="voice">“'+esc(u.voice)+'”</div>'+
+        '<div class="kv"><b>情绪</b> '+u.sentiment+' · <b>JTBD</b> '+(u.jtbd||'—')+(u.star?' · <b>星级</b> '+u.star+'★':'')+(u.country?' · <b>地区</b> '+u.country:'')+'</div>'+
+        '<div class="kv"><b>痛点</b> '+(u.pain||'—')+' · <b>需求</b> '+(u.need||'—')+'</div>'+
+      '</div>'+
+      '<div class="layer a">'+
+        '<div class="lh"><svg class="ic-svg"><use href="#i-users"/></svg>生成层 · 算法生成（带置信度）</div>'+
+        '<div class="kv"><b>私态度</b> '+u.privateLabel+confM+(u.gap?' · 与公开声音存在 say-do gap':'')+'</div>'+
+        '<div class="kv"><b>人口代理</b> '+u.demo+'<span class="conf conf-l">低置信·推断非真实</span></div>'+
+      '</div>'+
+      psychoHTML(u)+
+      '<div style="display:flex;gap:8px;align-items:center;margin-top:2px">'+
+        '<button class="btn" onclick="aiCard(this)" style="font-size:12px;padding:7px 14px"><svg class="ic-svg" style="width:14px;height:14px;margin-right:6px;vertical-align:-2px"><use href="#i-zap"/></svg>AI 解读</button>'+
+      '</div>'+
+      '<div class="aiCardOut" style="margin-top:8px;font-size:12.5px;line-height:1.6;color:var(--ts);white-space:pre-wrap;display:none"></div>'+
+    '</div>';
+  };
+
+  /* ---------- E. 压力测试 v2 ---------- */
+  function refreshStressTargets(){
+    const t=$('stressTarget'), tv=$('stressTargetVal'); if(!t||!tv)return;
+    const p=window.PRODUCT;
+    if(t.value==='sell'){
+      tv.style.display=''; tv.innerHTML='<option value="">选择卖点…</option>'+(p.sellingPoints||[]).map(s=>'<option>'+esc(s)+'</option>').join('');
+    }else if(t.value==='part'){
+      tv.style.display=''; tv.innerHTML='<option value="">选择部位…</option>'+(p.parts||[]).filter(pt=>pt.name).map(pt=>'<option>'+esc(pt.name)+'</option>').join('');
+    }else{ tv.style.display='none'; tv.innerHTML=''; }
+  }
+  runStress = function(standalone){
+    const sk=$('scenSel')?$('scenSel').value:'launch';
+    const scen=SCENARIOS[sk]||{name:'场景',focus:[],defaultPrice:199};
+    const briefRaw=$('scenBrief')?$('scenBrief').value.trim():'';
+    const tType=$('stressTarget')?$('stressTarget').value:'global';
+    const tVal=$('stressTargetVal')?$('stressTargetVal').value:'';
+    const p=window.PRODUCT;
+    let sceneName=scen.name;
+    let brief=briefRaw;
+    let extraKw=[];
+    if(tType==='sell' && tVal){ sceneName='按卖点：'+tVal; brief=(p.name?p.name+' ':'')+tVal+' · '+briefRaw; extraKw=CONCERN_CATS.filter(c=> (tVal+'\n'+briefRaw).toLowerCase().indexOf(c.label.toLowerCase())>=0 || c.words.some(w=>(tVal+' '+briefRaw).toLowerCase().indexOf(w.toLowerCase())>=0)).map(c=>c.key); }
+    if(tType==='part' && tVal){ sceneName='按部位：'+tVal; const pt=p.parts.find(x=>x.name===tVal)||{}; brief=(p.name?p.name+' ':'')+tVal+'（'+(pt.desc||'')+'） · '+briefRaw; }
+    const sp=scenarioParser(brief, sk);
+    if(tType!=='global'){ sp.keywords = Array.from(new Set(sp.keywords.concat(extraKw))); }
+    let sup=0,neu=0,opp=0; const concerns=[]; const driverCnt={}, kwCnt={};
+    const bySeg={}; SEG_KEYS.forEach(k=>bySeg[k]={sup:0,neu:0,opp:0,risk:0,n:0});
+    USERS.forEach(u=>{
+      const m=matchUser(u, sp);
+      const cell=bySeg[u.segKey]||(bySeg[u.segKey]={sup:0,neu:0,opp:0,risk:0,n:0});
+      cell.n++;
+      if(m.stance==='support'){sup++;cell.sup++;}
+      else if(m.stance==='neutral'){neu++;cell.neu++;}
+      else{opp++;cell.opp++;driverCnt[m.driver]=(driverCnt[m.driver]||0)+1; m.inter.forEach(k=>kwCnt[k]=(kwCnt[k]||0)+1); concerns.push({u,m}); cell.risk+=m.risk;}
+    });
+    concerns.sort((a,b)=>b.m.risk-a.m.risk); if(concerns.length>10)concerns.length=10;
+    const N=USERS.length||1;
+    const DRIVER_LABEL={price:'价格偏高',concern:'场景击中痛点',star:'原评价低星',disposition:'基线态度'};
+    const driverLine=Object.keys(driverCnt).sort((a,b)=>driverCnt[b]-driverCnt[a]).map(k=>((DRIVER_LABEL[k]||k))+' '+driverCnt[k]).join(' · ')||'—';
+    const topKw=Object.keys(kwCnt).sort((a,b)=>kwCnt[b]-kwCnt[a]).slice(0,6).map(k=>{const c=CONCERN_CATS.find(x=>x.key===k);return (c?c.label:k)+' '+kwCnt[k];}).join(' · ')||'—';
+    lastStressOpp=concerns.map(c=>({seg:c.u.segName,band:c.u.band,extreme:!!c.u.extreme,driver:c.m.driver,driverLabel:DRIVER_LABEL[c.m.driver]||c.m.driver,detail:c.m.driverDetail,rel:c.m.rel,risk:c.m.risk,voice:c.u.voice}));
+    const prodCtx = (p.category||p.partType!=='通用'||p.sellingPoints.length)?('产品：'+(p.category||'未填品类')+'｜部位='+p.partType+'｜重量='+p.weight+(p.sellingPoints.length?('｜卖点='+p.sellingPoints.join('/')):'')+(p.parts.length?('｜部位='+p.parts.map(x=>x.name).join('/')):'')+(p.functions.length?('｜功能='+p.functions.join('/')):'')+(p.experience?('｜体验='+p.experience):'')+(p.baseline?('｜已知反馈='+p.baseline):'')+'\n'):'';
+    lastStressCtx=prodCtx+'场景：'+sceneName+(brief?('，方案：「'+brief+'」'):'')+'。\n共 '+N+' 位虚拟用户：支持 '+sup+'、中立 '+neu+'、反对 '+opp+'（反对率 '+((opp/N)*100).toFixed(0)+'%）。\n反对主因分布：'+driverLine+'。\n高频反对关键词：'+topKw+'。\n代表性反对用户（按风险排序，共 '+opp+' 位）：\n'+
+      concerns.slice(0,8).map((c,i)=>(i+1)+'. ['+c.u.segName+'/'+c.u.band+'] 驱动='+(DRIVER_LABEL[c.m.driver]||c.m.driver)+'（相关度 '+((c.m.rel*100)|0)+'% · 风险 '+c.m.risk+'）：'+c.u.voice).join('\n');
+    const out=$('scenOut');
+    let table='<table class="stress-table"><thead><tr><th>分群</th><th>人数</th><th>支持</th><th>中立</th><th>反对</th><th>平均风险</th><th>Top 反对点</th></tr></thead><tbody>';
+    SEG_KEYS.forEach(k=>{
+      const c=bySeg[k]; if(!c||!c.n)return;
+      const topCon=Object.keys(driverCnt).length?DRIVER_LABEL[Object.keys(driverCnt)[0]]||'—':'—';
+      const avgr=(c.opp?c.risk/c.opp:0).toFixed(2);
+      const col=(SEGMENTS.find(s=>s.key===k)||{}).color||'#888';
+      table+='<tr><td><span class="bar" style="background:'+col+'"></span>'+SEG_NAME[k]+'</td><td>'+c.n+'</td><td style="color:#34d399">'+c.sup+'</td><td style="color:#94a3b8">'+c.neu+'</td><td style="color:#fca5a5">'+c.opp+'</td><td>'+avgr+'</td><td style="font-size:12px;color:var(--ts)">'+topCon+'</td></tr>';
+    });
+    table+='</tbody></table>';
+    out.innerHTML=
+      '<div class="note" style="margin:0 0 4px">场景：<b style="color:var(--tp)">'+esc(sceneName)+'</b>'+(brief?' · 「'+esc(brief)+'」':'')+' · 共 '+N+' 位虚拟用户'+(sp.price!=null?' · 场景价 <b style="color:var(--tp)">'+sp.price+'</b>':'')+' · 关注维度 '+sp.keywords.map(k=>{const c=CONCERN_CATS.find(x=>x.key===k);return c?c.label:k;}).join('/')+'</div>'+
+      '<div class="agg"><span class="sup" style="width:'+(sup/N*100)+'%">支持 '+sup+'</span><span class="neu" style="width:'+(neu/N*100)+'%">中立 '+neu+'</span><span class="opp" style="width:'+(opp/N*100)+'%">反对 '+opp+'</span></div>'+
+      '<div class="note">支持率 '+((sup/N)*100).toFixed(0)+'% · 反对率 '+((opp/N)*100).toFixed(0)+'%。'+(opp/N>0.3?'<svg class="ic-svg" style="width:14px;height:14px;vertical-align:-2px;color:var(--red)"><use href="#i-alert"/></svg> 反对占比偏高，建议先调整方案再投放。':(opp/N<0.15?'反对可控，方案较为稳健。':'反对中等，关注极端用户叙事。'))+'</div>'+
+      '<div class="glass" style="padding:16px 18px;margin:14px 0 4px"><div class="note" style="margin:0 0 8px"><b style="color:var(--tp)">聚合洞察 · 反对归因</b></div><div class="kv"><b>反对主因</b> '+driverLine+'</div><div class="kv"><b>高频反对关键词</b> '+topKw+'</div>'+(prodCtx?'<div class="kv" style="color:var(--tm);font-size:12.5px;white-space:pre-wrap">产品上下文：'+esc(prodCtx)+'</div>':'')+'</div>'+
+      '<div class="note" style="margin:14px 0 6px"><b style="color:var(--tp)">分类型压力测试表（8 分群）</b></div>'+table+
+      (concerns.length?'<div class="concerns" style="margin-top:14px"><div class="note" style="margin:0 0 6px">代表性反对声音（按风险排序，共 '+opp+' 位反对）：</div>'+concerns.map(c=>'<div class="cc"><div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px"><b>'+c.u.segName+'</b>（'+c.u.band+'）'+(c.u.extreme?'<span class="badge b-ext">极端/领先</span>':'')+(c.u.isKOL?'<span class="badge b-kol">KOL</span>':'')+'<span style="font-size:11px;padding:2px 8px;border-radius:10px;background:rgba(239,68,68,.16);color:#fca5a5">风险 '+c.m.risk+'</span><span style="font-size:11px;padding:2px 8px;border-radius:10px;background:rgba(0,212,255,.14);color:#7dd3fc">相关度 '+((c.m.rel*100)|0)+'%</span><span style="font-size:11px;padding:2px 8px;border-radius:10px;background:rgba(168,85,247,.16);color:#d8b4fe">驱动：'+(DRIVER_LABEL[c.m.driver]||c.m.driver)+'</span></div>“'+esc(c.u.voice)+'”<div style="font-size:12.5px;color:var(--ts);margin-top:5px">↳ '+esc(c.m.driverDetail)+(c.m.priceNote&&c.m.driver!=='price'?'；'+esc(c.m.priceNote):'')+'</div></div>').join('')+'</div>':'')+
+      (standalone?'<div class="report-card"><div class="note" style="margin:0 0 6px"><b style="color:var(--purple)">单独报告</b> · 可复制给智能体做多轮深挖</div><div style="font-size:12.5px;line-height:1.7;color:var(--ts);white-space:pre-wrap">'+esc(lastStressCtx)+'</div></div>':'');
+    if(typeof out.scrollIntoView==='function') out.scrollIntoView({behavior:'smooth',block:'nearest'});
+    const ai=getAICfg();
+    if(ai.on&&ai.key){ callLLM('你是资深用户研究分析师。基于下面的虚拟用户压力测试数据，输出一段深度洞察（200 字内）：①反对的深层逻辑；②最该警惕的分群及风险；③一句可落地的改进建议。', lastStressCtx).then(t=>{ if(t) appendAIInsight(t); }); }
+  };
+
+  /* ---------- F. 智能体对话 ---------- */
+  function agentSummary(){
+    const N=USERS.length;
+    if(!N) return '（尚未生成虚拟用户群）';
+    const segCnt={}; SEG_KEYS.forEach(k=>segCnt[k]=0);
+    const psyCnt={motive:0,barrier:0,attach:0,risk:0};
+    USERS.forEach(u=>{ segCnt[u.segKey]=(segCnt[u.segKey]||0)+1; if(u.psycho){ if(u.psycho.motive)psyCnt.motive++; if(u.psycho.barrier)psyCnt.barrier++; if(u.psycho.attach)psyCnt.attach++; if(u.psycho.risk)psyCnt.risk++; } });
+    const segLine=SEG_KEYS.map(k=>SEG_NAME[k]+' '+segCnt[k]).join('、');
+    const psyLine='真实动机已推导 '+psyCnt.motive+' 人 / 潜意识障碍 '+psyCnt.barrier+' / 情感依附点 '+psyCnt.attach+' / 风险规避 '+psyCnt.risk;
+    const vocN=flattenVOC((window.VOC_FILTERED&&window.__useFiltered)?window.VOC_FILTERED:VOC).length;
+    return '用户群：共 '+N+' 人（'+segLine+'）。心理推导覆盖：'+psyLine+'。当前用于生成的数据源 VOC 条数：'+vocN+(window.__useFiltered?'（已筛选）':'（全部）')+'。';
+  }
+  function agentSystem(){
+    const p=window.PRODUCT||{};
+    const prod='产品档案：品类='+(p.category||'未填')+'｜部位类型='+(p.partType||'通用')+'｜重量='+(p.weight||'中')+'｜价格带='+(p.priceBand||'未填')+(p.sellingPoints&&p.sellingPoints.length?('｜卖点='+p.sellingPoints.join('/')):'')+(p.parts&&p.parts.length?('｜分框部位='+p.parts.map(x=>x.name+(x.desc?('('+x.desc+')'):'')).join('/')):'')+(p.functions&&p.functions.length?('｜功能='+p.functions.join('/')):'')+(p.experience?('｜使用体验='+p.experience):'')+(p.baseline?('｜已知反馈='+p.baseline):'');
+    const purpose=($('purposeTxt')?$('purposeTxt').value.trim():'');
+    const vocN = flattenVOC((window.VOC_FILTERED&&window.__useFiltered)?window.VOC_FILTERED:VOC).length;
+    const vocInfo = (window.__useFiltered? ('已按目的/属性筛选 VOC（'+vocN+' 条）') : ('使用全部 VOC（'+vocN+' 条）'));
+    const modeNote = (window.__agentMode==='deep')
+      ? '请采用「深度」模式：聚焦收敛，抓住最关键的分群与矛盾，少而精，直接给结论。'
+      : '请采用「扩散」模式：联想发散，从不同角度提出可能性、未被想到的风险与替代解释。';
+    return '你是「虚拟用户压力测试」工具的智能体分析师，服务于产品/运营/增长同学。下面是你所基于的真实数据与结论，请始终基于它们回答，不要编造数据或用户。\n\n'+prod+'\n\n筛选目的：'+(purpose||'（未填写，按通用目的理解）')+'\n\n数据源：'+vocInfo+'\n\n用户群摘要：'+agentSummary()+'\n\n最近一次压力测试报告：\n'+(lastStressCtx||'（尚未运行压力测试，请先去「压力测试结果」运行一次）')+'\n\n'+modeNote+'\n\n当被问到具体分群或矛盾时，引用上面的数据与原话。若用户问超出数据范围的内容，明确说明「这超出当前数据，仅作推测」。';
+  }
+
+  async function agentCall(messages){
+    const cfg=getAICfg();
+    if(!cfg.on||!cfg.key) return null;
+    const url=(cfg.base.replace(/\/+$/,'')+'/chat/completions');
+    const ctrl=new AbortController(); const to=setTimeout(()=>ctrl.abort(),30000);
+    try{
+      const r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+cfg.key},
+        body:JSON.stringify({model:cfg.model,messages:messages.map(m=>({role:m.role,content:m.content})),temperature:(window.__agentMode==='deep'?0.4:0.85),max_tokens:900}),signal:ctrl.signal});
+      clearTimeout(to);
+      if(!r.ok){const e=await r.text().catch(()=> '');console.warn('agent LLM err',r.status,e);return null;}
+      const d=await r.json();
+      return (d.choices&&d.choices[0]&&d.choices[0].message&&d.choices[0].message.content)||null;
+    }catch(e){clearTimeout(to);console.warn('agent LLM fetch failed',e);return null;}
+  }
+  function renderAgent(){
+    const box=$('agentMsgs'); if(!box)return;
+    box.innerHTML='';
+    if(!window.__agentMsgs.length){
+      box.innerHTML='<div class="amsg sys">（对话为空）智能体基于你已生成的用户群 + 已运行的压力测试作答。先去「工作台」生成用户、在「压力测试结果」跑一次测试，再来这里深挖。</div>';
+      return;
+    }
+    window.__agentMsgs.forEach(m=>{
+      const d=document.createElement('div'); d.className='amsg '+(m.role==='user'?'u':'a'); d.textContent=m.content; box.appendChild(d);
+    });
+    box.scrollTop=box.scrollHeight;
+  }
+  async function agentSend(){
+    const ta=$('agentInput'); if(!ta)return;
+    const txt=ta.value.trim(); if(!txt)return;
+    const cfg=getAICfg();
+    if(!cfg.on||!cfg.key){ if($('agentHint'))$('agentHint').textContent='请先在工作台开启 AI 增强并填密钥'; return; }
+    if(!USERS.length){ if($('agentHint'))$('agentHint').textContent='请先在工作台生成虚拟用户群'; return; }
+    window.__agentMsgs.push({role:'user',content:txt});
+    renderAgent();
+    ta.value='';
+    if($('agentSendBtn'))$('agentSendBtn').disabled=true;
+    if($('agentHint'))$('agentHint').textContent='思考中…';
+    const msgs=[{role:'system',content:agentSystem()}].concat(window.__agentMsgs.map(m=>({role:m.role,content:m.content})));
+    const res=await agentCall(msgs);
+    if($('agentSendBtn'))$('agentSendBtn').disabled=false;
+    if($('agentHint'))$('agentHint').textContent='';
+    if(res==null) window.__agentMsgs.push({role:'assistant',content:'（调用失败或模型无返回，请检查密钥 / 模型名 / 网络是否可达）'});
+    else window.__agentMsgs.push({role:'assistant',content:res});
+    renderAgent();
+  }
+  function agentReset(){
+    window.__agentMsgs=[];
+    renderAgent();
+    if($('agentHint'))$('agentHint').textContent='';
+  }
+
+  /* ---------- 事件绑定 + 初始化 ---------- */
+  function bind(){
+    const rs=$('ratioSeg'); if(rs){ rs.querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{
+      rs.querySelectorAll('button').forEach(x=>x.classList.remove('on')); b.classList.add('on'); setRatioPreset(b.dataset.r);
+    })); }
+    const am=$('agentModeSeg'); if(am){ am.querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{
+      am.querySelectorAll('button').forEach(x=>x.classList.remove('on')); b.classList.add('on'); window.__agentMode=b.dataset.m;
+    })); }
+    const st=$('stressTarget'); if(st)st.addEventListener('change',refreshStressTargets);
+    const ai=$('agentInput'); if(ai)ai.addEventListener('keydown',e=>{ if(e.key==='Enter'&&(e.metaKey||e.ctrlKey)){e.preventDefault();agentSend();} });
+    // 暴露给内联 onclick 的处理函数（IIFE 作用域内函数默认不可被 HTML 直接调用）
+    window.renderProductForm=renderProductForm; window.renderTags=renderTags; window.renderParts=renderParts; window.saveProduct=saveProduct;
+    window.aiScreenVOC=aiScreenVOC; window.quickFilterVOC=quickFilterVOC; window.clearFilterVOC=clearFilterVOC;
+    window.setRatioPreset=setRatioPreset; window.renderSegSliders=renderSegSliders; window.refreshStressTargets=refreshStressTargets;
+    window.agentSummary=agentSummary; window.agentSystem=agentSystem; window.agentSend=agentSend; window.agentReset=agentReset;
+    window.runStress=runStress; window.genUsers=genUsers; window.cardHTML=cardHTML; window.inferPsycho=inferPsycho;
+  }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',bind); else bind();
+  renderProductForm();
+  setRatioPreset('custom');
+  refreshStressTargets();
+  renderAgent();
+})();
 </script>
 </body>
 </html>
