@@ -794,6 +794,11 @@ body.light .stress-table th,body.light .stress-table td{border-bottom-color:var(
             <button class="btn" onclick="saveAICfg()">保存配置</button>
             <span id="aiSaveHint" style="font-size:12px;color:var(--tp)"></span>
           </div>
+          <div style="display:flex;gap:10px;align-items:center;margin-top:4px">
+            <button class="btn" id="aiTestBtn" type="button" onclick="aiTest()">测试 AI 连接</button>
+            <span id="aiTestHint" style="font-size:12px;color:var(--ts)"></span>
+          </div>
+          <div id="aiConnStat" style="display:none;margin-top:8px;padding:8px 10px;border-radius:8px;font-size:12px;line-height:1.5"></div>
         </div>
         <p class="note" style="margin:10px 0 0">默认推荐 <b style="color:var(--cyan)">DeepSeek</b>（国内可直连）：Base = <code style="background:rgba(0,212,255,.1);padding:1px 6px;border-radius:4px">https://api.deepseek.com/v1</code>，Model = <code style="background:rgba(0,212,255,.1);padding:1px 6px;border-radius:4px">deepseek-v4-flash</code>。也支持 OpenAI / 通义 / 智谱等其他 OpenAI 兼容端点。密钥仅存本机浏览器。</p>
       </div>
@@ -1496,9 +1501,11 @@ async function generate(){
   const bar=document.getElementById('genBar');const pct=document.getElementById('genPct');const txt=document.getElementById('genTxt');
   const cfg=getAICfg();
   const purpose=document.getElementById('purposeTxt')?document.getElementById('purposeTxt').value.trim():'';
-  if(cfg.on&&cfg.key&&purpose&&!window.__useFiltered){
-    if(txt){txt.textContent='AI 接管中：正在按产品目的筛选 VOC…';bar.style.width='8%';pct.textContent='8%';}
-    if(window.aiScreenVOC) await window.aiScreenVOC();
+  if(cfg.on&&cfg.key){
+    if(txt){txt.textContent='AI 接管中：正在生成用户画像…';bar.style.width='4%';pct.textContent='4%';}
+    if(purpose&&!window.__useFiltered&&window.aiScreenVOC){
+      try{ await window.aiScreenVOC(); }catch(e){ console.warn('aiScreenVOC 失败，继续规则生成',e); }
+    }
   }
   try{
     USERS=genUsers(N);
@@ -1511,7 +1518,7 @@ async function generate(){
         for(;i<end;i++){if(i<200)grid.insertAdjacentHTML('beforeend',cardHTML(USERS[i],i));}
         const p=Math.round(i/N*100);bar.style.width=p+'%';pct.textContent=p+'%';txt.textContent='正在生成虚拟用户… '+i+' / '+N;
         if(i<N)requestAnimationFrame(chunk);
-        else{txt.textContent='生成完成 · 共 '+N+' 张虚拟用户卡'+(cfg.on&&cfg.key?'（AI 接管：画像由大模型生成）':'');btn.disabled=false;renderGrid();showResultsReady();}
+        else{txt.textContent='生成完成 · 共 '+N+' 张虚拟用户卡'+((cfg.on&&cfg.key)?'（AI 接管中…）':'（规则版）');btn.disabled=false;renderGrid();showResultsReady();}
       }catch(err){txt.textContent='生成失败：'+err.message;btn.disabled=false;console.error(err);}
     }
     chunk();
@@ -1562,17 +1569,34 @@ function toggleAISwitch(){
 }
 async function callLLM(system, user){
   const cfg=getAICfg();
-  if(!cfg.on||!cfg.key)return null;
+  if(!cfg.on||!cfg.key){ window.__aiLast={ok:false,reason:'未开启或无密钥'}; return null; }
   const url=(cfg.base.replace(/\/+$/,'')+'/chat/completions');
   const ctrl=new AbortController(); const to=setTimeout(()=>ctrl.abort(),25000);
   try{
     const r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+cfg.key},
       body:JSON.stringify({model:cfg.model,messages:[{role:'system',content:system},{role:'user',content:user}],temperature:0.6,max_tokens:600}),signal:ctrl.signal});
     clearTimeout(to);
-    if(!r.ok){const e=await r.text().catch(()=> '');console.warn('LLM err',r.status,e);return null;}
+    if(!r.ok){const e=await r.text().catch(()=> ''); let msg='HTTP '+r.status; try{const j=JSON.parse(e); if(j&&j.error&&j.error.message)msg+=' · '+j.error.message;}catch(_){ if(e)msg+=' · '+e.slice(0,120);} window.__aiLast={ok:false,reason:msg}; console.warn('LLM err',r.status,e); return null; }
     const d=await r.json();
-    return (d.choices&&d.choices[0]&&d.choices[0].message&&d.choices[0].message.content)||null;
-  }catch(e){clearTimeout(to);console.warn('LLM fetch failed',e);return null;}
+    const c=(d.choices&&d.choices[0]&&d.choices[0].message&&d.choices[0].message.content)||null;
+    window.__aiLast={ok:!!c, reason:c?null:('HTTP '+r.status+' · 模型无内容返回')};
+    return c;
+  }catch(e){clearTimeout(to); const m=(e&&e.name==='AbortError')?'请求超时（25s）':('网络/跨域错误：'+(e&&e.message||e)); window.__aiLast={ok:false,reason:m}; console.warn('LLM fetch failed',e); return null;}
+}
+function aiTest(){
+  const cfg=getAICfg();
+  const hint=document.getElementById('aiTestHint'); const box=document.getElementById('aiConnStat');
+  if(!cfg.on||!cfg.key){ if(hint)hint.textContent='请先开启并填密钥'; if(box){box.style.display='block';box.style.background='rgba(239,68,68,.12)';box.style.color='#fca5a5';box.textContent='未开启 AI 或无密钥，无法测试。';} return; }
+  if(hint)hint.textContent='连接测试中…'; if(box)box.style.display='none';
+  callLLM('你是测试助手，请只回复两个字：正常。','测试').then(t=>{
+    if(hint)hint.textContent='';
+    const last=window.__aiLast||{};
+    if(box){
+      box.style.display='block';
+      if(last.ok){ box.style.background='rgba(52,211,153,.14)'; box.style.color='#6ee7b7'; box.textContent='连接成功 · 模型 '+cfg.model+' 已响应：'+(t||'').slice(0,40); }
+      else { box.style.background='rgba(239,68,68,.12)'; box.style.color='#fca5a5'; box.textContent='连接失败：'+(last.reason||'未知错误')+'。请检查 Base URL / 模型名 / 密钥 / 网络。'; }
+    }
+  });
 }
 function escHtml(s){return (s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
 function appendAIInsight(t){
@@ -1975,15 +1999,17 @@ initAI();
   async function inferPsycho(users){
     const cfg=getAICfg();
     if(!cfg.on||!cfg.key) return;
-    const B=8;
+    const B=8; let ok=0, calls=0;
     for(let i=0;i<users.length;i+=B){
       const batch=users.slice(i,i+B);
       const sys='你是消费心理分析师，也是用户研究员。下面 N 位虚拟用户的「真实原话」是锚定层（固定事实，不可更改、不可编造）。请基于每位真实原话，为每一位输出一个 JSON 对象（整个回复是一个 JSON 数组，长度与用户数一致），每位含：private（0~1 的数值，代表你判断的「私下真实态度」，0=强烈反对、0.5=中立、1=强烈支持）、persona（一句话人物小传，16 字内，含身份/场景/典型动作）、motive（真实动机：所言 vs 所想）、barrier（潜意识障碍）、attach（情感依附点）、risk（风险规避倾向），后四者每字段一句话。只输出 JSON，不要解释。';
       const user=batch.map((u,idx)=>(idx+1)+'. 分群='+u.segName+' 公开态度='+u.statedLabel+' 原话：“'+(u.voice||'').slice(0,140)+'”').join('\n');
       let res=null; try{ res=await callLLM(sys,user); }catch(e){ res=null; }
+      calls++;
       let arr=null;
       if(res){ try{ const m=res.match(/\[[\s\S]*\]/); arr=m?JSON.parse(m[0]):null; }catch(e){ arr=null; } }
       if(Array.isArray(arr)){
+        ok++;
         batch.forEach((u,k)=>{ const o=arr[k]; if(!o)return;
           if(typeof o.private==='number'){ u.private=Math.min(1,Math.max(0,o.private)); u.privateLabel=stanceLabel(u.private); u.gap=Math.abs(u.private-u.stated)>0.22; }
           if(o.persona) u.persona=String(o.persona).slice(0,40);
@@ -1991,6 +2017,15 @@ initAI();
         });
       }
       if(typeof renderGrid==='function') renderGrid();
+    }
+    const gt=document.getElementById('genTxt');
+    if(gt){
+      if(calls>0 && ok===0){
+        const r=(window.__aiLast&&window.__aiLast.reason)||'模型无返回';
+        gt.textContent='AI 接管未生效：'+r+'（当前展示规则版卡片，请检查密钥/模型名/网络）';
+      }else if(ok>0){
+        gt.textContent='AI 接管完成：'+users.length+' 位用户画像已由大模型生成（私态度 / 人物小传 / 心理推导层已更新）';
+      }
     }
   }
   function psychoHTML(u){
