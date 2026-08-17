@@ -1095,7 +1095,7 @@ function matchUser(u, sp){
   // 立场概率：私态度（persona 基线）× 场景相关性修正
   const disp = 1 - u.private;                                  // 基线反对倾向 0~1
   const sceneSignal = Math.min(1, rel*neg*0.6 + priceFactor*0.3 + (starN<=2?0.2:0)*neg);
-  const pOpp=Math.min(1,Math.max(0, disp*0.6 + sceneSignal*0.4));
+  let pOpp=Math.min(1,Math.max(0, disp*0.6 + sceneSignal*0.4));
   const stance=pOpp>=0.55?'oppose':pOpp>=0.45?'neutral':'support';
   // 驱动因子归因
   let driver='disposition', driverDetail='基线情绪/态度倾向';
@@ -1103,9 +1103,98 @@ function matchUser(u, sp){
   else if(rel>0.4 && neg>=0.5){driver='concern';driverDetail='场景击中其痛点/需求关键词「'+inter.map(k=>{const c=CONCERN_CATS.find(x=>x.key===k);return c?c.label:k;}).join('、')+'」';}
   else if(starN<=2){driver='star';driverDetail='原评价星级偏低（'+starN+'★）';}
   else if(priceNote){driver='price';driverDetail=priceNote;}
-  const risk=+(u.influence*(0.5+u.intensity)).toFixed(2);
-  return {rel:Math.round(rel*100)/100,inter,priceFactor,priceNote,prob:pOpp,stance,driver,driverDetail,risk,starN};
-}
+const risk=+(u.influence*(0.5+u.intensity)).toFixed(2);
+  // 用户卡画像 vs 当前方案：使用场景命中 / 障碍被激发 / 反驳点直击 → 决定是否反对的核心
+  const pm = psychoMatch(u, brief||'', sp);
+  return {rel:Math.round(rel*100)/100,inter,priceFactor,priceNote,prob:pOpp,stance,driver,driverDetail,risk,starN, pm};
+  }
+
+  /* ---------- 产品压力假设：从 brief + sp 推断当前方案下的「核心卖点/可能反场景/触发的心理机制」 ---------- */
+  // 这是反对归因的「反方锚点」——AI 和规则引擎都基于此对照每张用户的 persona/psycho 做匹配诊断
+  function inferProductHypothesis(brief, sp){
+    const text=(brief||'').toLowerCase();
+    const hits=sp.keywords.map(k=>CONCERN_CATS.find(c=>c.key===k)).filter(Boolean);
+    // 反场景词：把关注维度翻成「用户可能的负面期待」（不再是模板硬编码的「屁股倒模/社死」）
+    const amap={
+      price:'被收割/性价比低/价格偏高',quiet:'噪音扰人/太吵/声音大',material:'材质不安全/不亲肤',durable:'用不久坏掉/不耐用/质量差',clean:'清洗麻烦/不好洗',
+      size:'过大不便携/体积大',look:'颜值不符场景/面子撑不住/礼物撑不住/包装寒酸',func:'功能不及预期/不够强',service:'售后无门/没保障',comfort:'舒适度差/不舒服'
+    };
+    const sells=hits.map(c=>c.label);
+    const anti=hits.map(c=>amap[c.key]||(c.label+'方面失望'));
+    // 心理机制触发器：从 brief 关键词识别产品方案触发的心理过程
+    const psychTriggers=[];
+    if(/包装|外观|颜值|设计|漂亮|好看|造型|送礼|送人|赠/.test(text)) psychTriggers.push('面子/形象/送礼');
+    if(/清洁|清洗|卫生|打理|抗菌/.test(text)) psychTriggers.push('使用卫生焦虑');
+    if(/便宜|贵|性价比|划算|实惠|优惠|大促/.test(text)) psychTriggers.push('价格锚定偏差');
+    if(/耐用|质量|结实|品控|耐久/.test(text)) psychTriggers.push('长期价值怀疑');
+    if(/功能|模式|震动|吸力|档位|续航|充电|智能/.test(text)) psychTriggers.push('功能期望差距');
+    if(/静音|安静|无声|私密/.test(text)) psychTriggers.push('隐私暴露焦虑');
+    if(/舒适|手感|贴合|亲肤|柔软/.test(text)) psychTriggers.push('体感不适担忧');
+    if(!psychTriggers.length) psychTriggers.push('通用期待');
+    return {sells, anti, psychTriggers, briefHits:hits.map(c=>c.key), price:sp.price, briefText:brief||''};
+  }
+
+  /* ---------- 用户卡画像 vs 当前方案：场景命中 / 障碍被激发 / 反驳点直击 ---------- */
+  function psychoMatch(u, brief, sp){
+    const p=u.psycho||{};
+    const scene=p.scene||''; const barrier=p.barrier||''; const motive=p.motive||'';
+    const risk=p.risk||''; const flaw=p.flaw||''; const suggest=p.suggest||'';
+    const attach=p.attach||'';
+    const text=(brief||'').toLowerCase();
+    const hyp = inferProductHypothesis(brief, sp);
+    // 工具：从可能 "a/b/c" 分隔的字符串中取出所有长度>=2 的词（抗噪音地匹配 persona 心理层）
+    const splitWords = s => (s||'').replace(/^(被|担心|使用|长期|价格|价格锚定|功能|体型|心理|长期)/g,'').split(/[\/、|]/g).map(x=>x.trim()).filter(x=>x.length>=2);
+    // 1) 场景命中：persona 使用场景 与 brief 触发的关注维度 / 心理触发器交叉
+    let sceneHit=0, sceneHitLabels=[];
+    if(scene){
+      (sp.keywords||[]).forEach(k=>{
+        const c=CONCERN_CATS.find(x=>x.key===k);
+        if(c && scene.indexOf(c.label)>=0){ sceneHit+=0.3; sceneHitLabels.push(c.label); }
+      });
+      hyp.psychTriggers.forEach(t=>{
+        const words = t.split(/[\/、]/g).map(x=>x.trim()).filter(Boolean);
+        const hit = words.find(w=>w && (scene.indexOf(w)>=0 || motive.indexOf(w)>=0 || barrier.indexOf(w)>=0));
+        if(hit){ sceneHit+=0.15; sceneHitLabels.push(hit); }
+      });
+      sceneHit=Math.min(1, sceneHit);
+    }
+    // 工具：先按整词查，再按前 2 字符前缀查（应对「包装寒酸」 vs 「包装可能被吐槽」这种合理近义但字面差 1 字）
+    const containsAny = (text, ws) => {
+      if(!text) return false;
+      const hit = ws.find(w=>text.indexOf(w)>=0);
+      if(hit) return true;
+      const pre = ws.find(w=>w.length>=2 && text.indexOf(w.slice(0,2))>=0);
+      return !!pre;
+    };
+    // 2) 障碍被激发：persona 潜意识障碍 命中反场景关键词（多词任一命中）
+    let barrierHit=0, barrierHitLabels=[];
+    hyp.anti.forEach(a=>{
+      const words = splitWords(a);
+      if(containsAny(barrier, words)){ barrierHit+=0.3; barrierHitLabels.push(a); }
+      else {
+        const hit3 = words.find(w=>w.length>=3 && barrier.indexOf(w.slice(0,3))>=0);
+        if(hit3){ barrierHit+=0.15; barrierHitLabels.push(a); }
+      }
+    });
+    barrierHit=Math.min(1, barrierHit);
+    // 3) 反驳点直击：persona 反驳点 直接命中反场景（更强反对驱动）
+    let flawHit=0, flawHitLabels=[];
+    if(flaw){
+      hyp.anti.forEach(a=>{
+        const words = splitWords(a);
+        if(containsAny(flaw, words)){ flawHit+=0.4; flawHitLabels.push(a); }
+      });
+    }
+    flawHit=Math.min(1, flawHit);
+    // 4) AI 建议 vs 方案差距：suggest 提到方案本可改善的事 → 没改善则反对
+    const suggestHit = suggest && hyp.anti.some(a=>containsAny(suggest, splitWords(a)));
+    const suggestGap = suggestHit ? 0.2 : 0;
+    return {sceneHit:Math.round(sceneHit*100)/100, sceneHitLabels,
+      barrierHit:Math.round(barrierHit*100)/100, barrierHitLabels,
+      flawHit:Math.round(flawHit*100)/100, flawHitLabels,
+      suggestGap:Math.round(suggestGap*100)/100,
+      hasPsycho:!!(scene||barrier||motive||flaw||suggest||attach)};
+  }
 
 let VOC={};
 const BUILTIN_VOC={
@@ -2333,42 +2422,90 @@ initAI();
     if(tType==='part' && tVal){ sceneName='按部位：'+tVal; const pt=p.parts.find(x=>x.name===tVal)||{}; brief=(p.name?p.name+' ':'')+tVal+'（'+(pt.desc||'')+'） · '+briefRaw; }
     const sp=scenarioParser(brief, sk);
     if(tType!=='global'){ sp.keywords = Array.from(new Set(sp.keywords.concat(extraKw))); }
+    // 产品压力假设：从 brief + sp 推断当前方案下的「核心卖点/反场景/触发的心理机制」
+    const hyp = inferProductHypothesis(brief, sp);
     let sup=0,neu=0,opp=0; const concerns=[]; const driverCnt={}, kwCnt={};
-    const bySeg={}; SEG_KEYS.forEach(k=>bySeg[k]={sup:0,neu:0,opp:0,risk:0,n:0});
+    const bySeg={}; SEG_KEYS.forEach(k=>bySeg[k]={sup:0,neu:0,opp:0,risk:0,n:0,psy:0});
+    // 画像驱动计数（persona/psycho 命中导致的反对）
+    let personaDriverN=0, personaBarrierN=0, personaFlawN=0;
     USERS.forEach(u=>{
       const m=matchUser(u, sp);
-      const cell=bySeg[u.segKey]||(bySeg[u.segKey]={sup:0,neu:0,opp:0,risk:0,n:0});
-      cell.n++;
+      // 画像驱动：把 persona/psycho 的命中度换算成真实驱动
+      let extraDriver='', extraDetail='';
+      if(m.pm && m.pm.hasPsycho){
+        if(m.pm.flawHit>=0.4){ personaFlawN++; extraDriver='persona-flaw'; extraDetail = '反驳点直击当前方案反场景（'+m.pm.flawHitLabels.join('/')+'）：'+(u.psycho.flaw||''); }
+        else if(m.pm.barrierHit>=0.3){ personaBarrierN++; extraDriver='persona-barrier'; extraDetail = '潜意识障碍被当前方案放大（'+m.pm.barrierHitLabels.join('/')+'）：'+(u.psycho.barrier||''); }
+        else if(m.pm.sceneHit>=0.3){ extraDriver='persona-scene'; extraDetail = '使用场景与当前方案重合（'+m.pm.sceneHitLabels.join('/')+'）：'+(u.psycho.scene||''); }
+      }
+      const cell=bySeg[u.segKey]||(bySeg[u.segKey]={sup:0,neu:0,opp:0,risk:0,n:0,psy:0});
+      cell.n++; cell.psy+=(m.pm&&m.pm.hasPsycho?1:0);
       if(m.stance==='support'){sup++;cell.sup++;}
       else if(m.stance==='neutral'){neu++;cell.neu++;}
-      else{opp++;cell.opp++;driverCnt[m.driver]=(driverCnt[m.driver]||0)+1; m.inter.forEach(k=>kwCnt[k]=(kwCnt[k]||0)+1); concerns.push({u,m}); cell.risk+=m.risk;}
+      else{
+        opp++;cell.opp++;cell.risk+=m.risk;
+        driverCnt[m.driver]=(driverCnt[m.driver]||0)+1;
+        if(extraDriver){ driverCnt[extraDriver]=(driverCnt[extraDriver]||0)+1; m._extraDriver=extraDriver; m._extraDetail=extraDetail; }
+        m.inter.forEach(k=>kwCnt[k]=(kwCnt[k]||0)+1);
+        concerns.push({u,m});
+      }
     });
     concerns.sort((a,b)=>b.m.risk-a.m.risk); if(concerns.length>10)concerns.length=10;
     const N=USERS.length||1;
-    const DRIVER_LABEL={price:'价格偏高',concern:'场景击中痛点',star:'原评价低星',disposition:'基线态度'};
+    const DRIVER_LABEL={price:'价格偏高',concern:'场景击中痛点',star:'原评价低星',disposition:'基线态度','persona-flaw':'画像反驳点直击','persona-barrier':'画像障碍被激发','persona-scene':'画像使用场景重合'};
     const driverLine=Object.keys(driverCnt).sort((a,b)=>driverCnt[b]-driverCnt[a]).map(k=>((DRIVER_LABEL[k]||k))+' '+driverCnt[k]).join(' · ')||'—';
     const topKw=Object.keys(kwCnt).sort((a,b)=>kwCnt[b]-kwCnt[a]).slice(0,6).map(k=>{const c=CONCERN_CATS.find(x=>x.key===k);return (c?c.label:k)+' '+kwCnt[k];}).join(' · ')||'—';
-    lastStressOpp=concerns.map(c=>({seg:c.u.segName,band:c.u.band,extreme:!!c.u.extreme,driver:c.m.driver,driverLabel:DRIVER_LABEL[c.m.driver]||c.m.driver,detail:c.m.driverDetail,rel:c.m.rel,risk:c.m.risk,voice:c.u.voice}));
+    lastStressOpp=concerns.map(c=>({seg:c.u.segName,band:c.u.band,extreme:!!c.u.extreme,driver:c.m.driver,driverLabel:DRIVER_LABEL[c.m.driver]||c.m.driver,extraDriver:c.m._extraDriver||null,extraDriverLabel:c.m._extraDriver?(DRIVER_LABEL[c.m._extraDriver]||c.m._extraDriver):null,detail:c.m.driverDetail,extraDetail:c.m._extraDetail||null,rel:c.m.rel,risk:c.m.risk,voice:c.u.voice,persona:c.u.persona,scene:(c.u.psycho&&c.u.psycho.scene)||'',motive:(c.u.psycho&&c.u.psycho.motive)||'',barrier:(c.u.psycho&&c.u.psycho.barrier)||'',flaw:(c.u.psycho&&c.u.psycho.flaw)||'',suggest:(c.u.psycho&&c.u.psycho.suggest)||''}));
     const prodCtx = (p.category||p.partType!=='通用'||p.sellingPoints.length)?('产品：'+(p.category||'未填品类')+'｜部位='+p.partType+'｜重量='+p.weight+(p.sellingPoints.length?('｜卖点='+p.sellingPoints.join('/')):'')+(p.parts.length?('｜部位='+p.parts.map(x=>x.name).join('/')):'')+(p.functions.length?('｜功能='+p.functions.join('/')):'')+(p.experience?('｜体验='+p.experience):'')+(p.baseline?('｜已知反馈='+p.baseline):'')+'\n'):'';
-    lastStressCtx=prodCtx+'场景：'+sceneName+(brief?('，方案：「'+brief+'」'):'')+'。\n共 '+N+' 位虚拟用户：支持 '+sup+'、中立 '+neu+'、反对 '+opp+'（反对率 '+((opp/N)*100).toFixed(0)+'%）。\n反对主因分布：'+driverLine+'。\n高频反对关键词：'+topKw+'。\n代表性反对用户（按风险排序，共 '+opp+' 位）：\n'+
-      concerns.slice(0,8).map((c,i)=>(i+1)+'. ['+c.u.segName+'/'+c.u.band+'] 驱动='+(DRIVER_LABEL[c.m.driver]||c.m.driver)+'（相关度 '+((c.m.rel*100)|0)+'% · 风险 '+c.m.risk+'）：'+c.u.voice).join('\n');
+    // 产品压力假设段（替代硬编码 VOC 模板：现在是「当前 brief 推断出的核心卖点/反场景/心理触发器」）
+    const hypBlock = '【产品压力假设（由 brief 推断）】\n'+
+      '  方案：'+(brief||'(空)')+'\n'+
+      '  核心卖点（用户期待）：'+(hyp.sells.join('、')||'通用')+'\n'+
+      '  反场景（潜在反对点）：'+(hyp.anti.join('、')||'通用')+'\n'+
+      '  心理触发器：'+(hyp.psychTriggers.join('、')||'通用')+(hyp.price!=null?('\n  场景价：'+hyp.price):'')+'\n';
+    // 用户卡画像摘要段（按分群聚合：每分群一条 persona + 心理层 + AI 接管比例）
+    const userBlock = '【用户卡画像摘要（按分群聚合）】\n'+
+      SEG_KEYS.map(k=>{
+        const us=USERS.filter(u=>u.segKey===k);
+        if(!us.length) return null;
+        const aiN=us.filter(u=>u._aiTaken).length;
+        const segUser=us[0];
+        const sample=us.filter(u=>u._aiTaken&&u.persona).slice(0,3);
+        const personaTxt = sample.length?sample.map(u=>u.persona).join(' ｜ '):'(未由 AI 接管)';
+        const psychoCommon = sample.map(u=>u.psycho?('场景='+(u.psycho.scene||'-')+'；动机='+(u.psycho.motive||'-')+'；障碍='+(u.psycho.barrier||'-')+'；反驳='+(u.psycho.flaw||'-')+'；建议='+(u.psycho.suggest||'-')):null).filter(Boolean).join('\n    ');
+        return SEG_NAME[k]+'（'+us.length+' 人 / AI 接管 '+aiN+'）：\n    人物小传：'+personaTxt+(psychoCommon?('\n    心理层：\n    '+psychoCommon):'');
+      }).filter(Boolean).join('\n')+'\n';
+    lastStressCtx=prodCtx+'场景：'+sceneName+(brief?('，方案：「'+brief+'」'):'')+'。\n共 '+N+' 位虚拟用户：支持 '+sup+'、中立 '+neu+'、反对 '+opp+'（反对率 '+((opp/N)*100).toFixed(0)+'%）。\n反对主因分布：'+driverLine+'。\n高频反对关键词：'+topKw+'。\n画像驱动分布：反驳点直击 '+personaFlawN+' / 障碍被激发 '+personaBarrierN+'。\n'+
+      hypBlock+'\n'+userBlock+
+      '代表性反对用户（按风险排序，共 '+opp+' 位）：\n'+
+      concerns.slice(0,8).map((c,i)=>(i+1)+'. ['+c.u.segName+'/'+c.u.band+(c.u._aiTaken?'/AI接管':'')+'] 驱动='+(DRIVER_LABEL[c.m.driver]||c.m.driver)+(c.m._extraDriver?(' + '+(DRIVER_LABEL[c.m._extraDriver]||c.m._extraDriver)):'')+'（相关度 '+((c.m.rel*100)|0)+'% · 风险 '+c.m.risk+'）'+(c.u.persona?(' persona=「'+c.u.persona+'」'):'')+(c.u.psycho&&c.u.psycho.scene?(' 使用场景=「'+c.u.psycho.scene+'」'):'')+(c.u.psycho&&c.u.psycho.flaw?(' 反驳点=「'+c.u.psycho.flaw+'」'):'')+'：'+c.u.voice).join('\n');
     const out=$('scenOut');
-    let table='<table class="stress-table"><thead><tr><th>分群</th><th>人数</th><th>支持</th><th>中立</th><th>反对</th><th>平均风险</th><th>Top 反对点</th></tr></thead><tbody>';
+    let table='<table class="stress-table"><thead><tr><th>分群</th><th>人数</th><th>支持</th><th>中立</th><th>反对</th><th>平均风险</th><th>AI 画像</th><th>Top 反对点</th></tr></thead><tbody>';
     SEG_KEYS.forEach(k=>{
       const c=bySeg[k]; if(!c||!c.n)return;
       const topCon=Object.keys(driverCnt).length?DRIVER_LABEL[Object.keys(driverCnt)[0]]||'—':'—';
       const avgr=(c.opp?c.risk/c.opp:0).toFixed(2);
       const col=(SEGMENTS.find(s=>s.key===k)||{}).color||'#888';
-      table+='<tr><td><span class="bar" style="background:'+col+'"></span>'+SEG_NAME[k]+'</td><td>'+c.n+'</td><td style="color:#34d399">'+c.sup+'</td><td style="color:#94a3b8">'+c.neu+'</td><td style="color:#fca5a5">'+c.opp+'</td><td>'+avgr+'</td><td style="font-size:12px;color:var(--ts)">'+topCon+'</td></tr>';
+      table+='<tr><td><span class="bar" style="background:'+col+'"></span>'+SEG_NAME[k]+'</td><td>'+c.n+'</td><td style="color:#34d399">'+c.sup+'</td><td style="color:#94a3b8">'+c.neu+'</td><td style="color:#fca5a5">'+c.opp+'</td><td>'+avgr+'</td><td style="font-size:12px;color:var(--cyan)">'+(c.psy?c.psy+'/'+c.n+' 已接管':'0/'+c.n+' 未接管')+'</td><td style="font-size:12px;color:var(--ts)">'+topCon+'</td></tr>';
     });
     table+='</tbody></table>';
     out.innerHTML=
       '<div class="note" style="margin:0 0 4px">场景：<b style="color:var(--tp)">'+esc(sceneName)+'</b>'+(brief?' · 「'+esc(brief)+'」':'')+' · 共 '+N+' 位虚拟用户'+(sp.price!=null?' · 场景价 <b style="color:var(--tp)">'+sp.price+'</b>':'')+' · 关注维度 '+sp.keywords.map(k=>{const c=CONCERN_CATS.find(x=>x.key===k);return c?c.label:k;}).join('/')+'</div>'+
+      // 产品压力假设 —— 替代原来的「VOC 模板硬编码上下文」
+      '<div class="glass" style="padding:14px 18px;margin:10px 0;border-left:3px solid var(--cyan)"><div class="note" style="margin:0 0 6px"><b style="color:var(--cyan)">产品压力假设 · 由 brief 推断</b></div><div class="kv"><b>核心卖点（用户期待）</b> '+esc(hyp.sells.join('、')||'通用')+'</div><div class="kv"><b>反场景（潜在反对点）</b> '+esc(hyp.anti.join('、')||'通用')+'</div><div class="kv"><b>心理触发器</b> '+esc(hyp.psychTriggers.join('、'))+'</div></div>'+
       '<div class="agg"><span class="sup" style="width:'+(sup/N*100)+'%">支持 '+sup+'</span><span class="neu" style="width:'+(neu/N*100)+'%">中立 '+neu+'</span><span class="opp" style="width:'+(opp/N*100)+'%">反对 '+opp+'</span></div>'+
       '<div class="note">支持率 '+((sup/N)*100).toFixed(0)+'% · 反对率 '+((opp/N)*100).toFixed(0)+'%。'+(opp/N>0.3?'<svg class="ic-svg" style="width:14px;height:14px;vertical-align:-2px;color:var(--red)"><use href="#i-alert"/></svg> 反对占比偏高，建议先调整方案再投放。':(opp/N<0.15?'反对可控，方案较为稳健。':'反对中等，关注极端用户叙事。'))+'</div>'+
-      '<div class="glass" style="padding:16px 18px;margin:14px 0 4px"><div class="note" style="margin:0 0 8px"><b style="color:var(--tp)">聚合洞察 · 反对归因</b></div><div class="kv"><b>反对主因</b> '+driverLine+'</div><div class="kv"><b>高频反对关键词</b> '+topKw+'</div>'+(prodCtx?'<div class="kv" style="color:var(--tm);font-size:12.5px;white-space:pre-wrap">产品上下文：'+esc(prodCtx)+'</div>':'')+'</div>'+
+      // 反对归因 —— 画像驱动分布已并入 driverLine，并新增「画像驱动」徽标
+      '<div class="glass" style="padding:16px 18px;margin:14px 0 4px"><div class="note" style="margin:0 0 8px"><b style="color:var(--tp)">聚合洞察 · 反对归因</b></div><div class="kv"><b>反对主因</b> '+driverLine+'</div><div class="kv"><b>高频反对关键词</b> '+topKw+'</div><div class="kv" style="color:var(--tm);font-size:12.5px">计算口径：相关度（场景维度∩用户痛点词）× 价格偏差 × 星级反向 × 情绪标签，加权得出立场概率；并叠加「用户卡画像命中」（persona 反驳点 / 潜意识障碍 / 使用场景与方案反场景的匹配度），两者共同驱动反对。'+(concerns.filter(c=>c.m._extraDriver).length?'<b style="color:var(--cyan)">本次反对 '+opp+' 位中 '+(concerns.filter(c=>c.m._extraDriver).length)+' 位由画像驱动（persona 反驳点直击 / 障碍被激发 / 使用场景重合），不是泛泛的负面情绪。</b>':'')+'</div></div>'+
       '<div class="note" style="margin:14px 0 6px"><b style="color:var(--tp)">分类型压力测试表（8 分群）</b></div>'+table+
-      (concerns.length?'<div class="concerns" style="margin-top:14px"><div class="note" style="margin:0 0 6px">代表性反对声音（按风险排序，共 '+opp+' 位反对）：</div>'+concerns.map(c=>'<div class="cc"><div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px"><b>'+c.u.segName+'</b>（'+c.u.band+'）'+(c.u.extreme?'<span class="badge b-ext">极端/领先</span>':'')+(c.u.isKOL?'<span class="badge b-kol">KOL</span>':'')+'<span style="font-size:11px;padding:2px 8px;border-radius:10px;background:rgba(239,68,68,.16);color:#fca5a5">风险 '+c.m.risk+'</span><span style="font-size:11px;padding:2px 8px;border-radius:10px;background:rgba(0,212,255,.14);color:#7dd3fc">相关度 '+((c.m.rel*100)|0)+'%</span><span style="font-size:11px;padding:2px 8px;border-radius:10px;background:rgba(168,85,247,.16);color:#d8b4fe">驱动：'+(DRIVER_LABEL[c.m.driver]||c.m.driver)+'</span></div>“'+esc(c.u.voice)+'”<div style="font-size:12.5px;color:var(--ts);margin-top:5px">↳ '+esc(c.m.driverDetail)+(c.m.priceNote&&c.m.driver!=='price'?'；'+esc(c.m.priceNote):'')+'</div></div>').join('')+'</div>':'')+
+      // 代表性反对声音 —— 每条都带 persona/psycho 摘要与画像驱动徽标
+      (concerns.length?'<div class="concerns" style="margin-top:14px"><div class="note" style="margin:0 0 6px">代表性反对声音（按风险排序，共 '+opp+' 位反对）：</div>'+concerns.map(c=>{
+        const personaLine = c.u.persona?('<div style="font-size:12px;color:var(--cyan);margin:4px 0 2px"><b style="color:var(--purple)">画像</b> · '+esc(c.u.persona)+'</div>'):'';
+        const sceneLine = (c.u.psycho&&c.u.psycho.scene)?('<div style="font-size:12px;color:var(--tm)"><b>使用场景</b> '+esc(c.u.psycho.scene)+(c.u.psycho.motive?(' · <b>真实动机</b> '+esc(c.u.psycho.motive)):'')+(c.u.psycho.barrier?(' · <b>潜意识障碍</b> '+esc(c.u.psycho.barrier)):'')+'</div>'):'';
+        const flawLine = (c.u.psycho&&c.u.psycho.flaw)?('<div style="font-size:12px;color:var(--red);margin-top:2px"><b>反驳点</b> '+esc(c.u.psycho.flaw)+(c.u.psycho.suggest?(' · <b>AI 建议</b> '+esc(c.u.psycho.suggest)):'')+'</div>'):'';
+        const pmBadge = (c.m.pm&&c.m.pm.hasPsycho)?('<span style="font-size:11px;padding:2px 8px;border-radius:10px;background:rgba(168,85,247,.16);color:#d8b4fe">画像命中 '+(c.m.pm.barrierHit+c.m.pm.flawHit+c.m.pm.sceneHit).toFixed(2)+'</span>'):'';
+        const extraBadge = c.m._extraDriver?('<span style="font-size:11px;padding:2px 8px;border-radius:10px;background:rgba(244,114,182,.18);color:#f9a8d4">'+esc(DRIVER_LABEL[c.m._extraDriver]||c.m._extraDriver)+'</span>'):'';
+        return '<div class="cc"><div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px"><b>'+c.u.segName+'</b>（'+c.u.band+'）'+(c.u.extreme?'<span class="badge b-ext">极端/领先</span>':'')+(c.u.isKOL?'<span class="badge b-kol">KOL</span>':'')+(c.u._aiTaken?'<span class="badge" style="background:rgba(0,212,255,.18);color:var(--cyan)">AI 画像</span>':'')+'<span style="font-size:11px;padding:2px 8px;border-radius:10px;background:rgba(239,68,68,.16);color:#fca5a5">风险 '+c.m.risk+'</span><span style="font-size:11px;padding:2px 8px;border-radius:10px;background:rgba(0,212,255,.14);color:#7dd3fc">相关度 '+((c.m.rel*100)|0)+'%</span><span style="font-size:11px;padding:2px 8px;border-radius:10px;background:rgba(168,85,247,.16);color:#d8b4fe">驱动：'+(DRIVER_LABEL[c.m.driver]||c.m.driver)+'</span>'+pmBadge+extraBadge+'</div>'+personaLine+sceneLine+'“'+esc(c.u.voice)+'”'+(c.m._extraDetail?('<div style="font-size:12.5px;color:#f9a8d4;margin-top:5px">↳ '+esc(c.m._extraDetail)+'</div>'):('<div style="font-size:12.5px;color:var(--ts);margin-top:5px">↳ '+esc(c.m.driverDetail)+(c.m.priceNote&&c.m.driver!=='price'?'；'+esc(c.m.priceNote):'')+'</div>'))+flawLine+'</div>';
+      }).join('')+'</div>':'')+
       (standalone?'<div class="report-card"><div class="note" style="margin:0 0 6px"><b style="color:var(--purple)">单独报告</b> · 可复制给智能体做多轮深挖</div><div style="font-size:12.5px;line-height:1.7;color:var(--ts);white-space:pre-wrap">'+esc(lastStressCtx)+'</div></div>':'');
     if(typeof out.scrollIntoView==='function') out.scrollIntoView({behavior:'smooth',block:'nearest'});
     aiStressReport();
@@ -2381,9 +2518,9 @@ initAI();
     const rep=document.createElement('div'); rep.className='glass report-card'; rep.style.cssText='padding:16px 18px;margin-top:14px;border:1px solid rgba(168,85,247,.32)';
     rep.innerHTML='<div class="note" style="margin:0 0 8px"><b style="color:var(--purple)">AI 接管解读</b> · <span style="color:var(--cyan)">大模型生成 · 非规则结论</span> · <span style="font-size:11px;color:var(--tm)">调用中…</span></div><div class="ai-rep" style="font-size:13.5px;line-height:1.75;color:var(--ts);white-space:pre-wrap">AI 正在解读压力测试结果…</div>';
     out.appendChild(rep);
-    const sys='你是资深用户研究分析师，也是产品/增长顾问。下面是一份由规则引擎产出的虚拟用户压力测试结构化数据（含真实原话引用）。请基于这些数据，用「AI 接管」的视角做完整解读，不要只复述数字，要给出判断：①反对的深层逻辑（为什么这些人会反对，背后的心理/场景机制）；②逐分群解读（8 个分群各自的态度与最该警惕的点）；③最该优先解决的一个矛盾与一句可落地改进建议；④如果这是上市前，给一句「能不能上」的结论与前置条件。语言简洁、有洞察、可直接给老板看。';
+    const sys='你是资深用户研究分析师，也是产品/增长顾问。下面是一份由规则引擎产出的虚拟用户压力测试结构化数据（含真实原话引用）。请基于这些数据，用「AI 接管」的视角做完整解读：\n①反对的深层逻辑——不要套用通用模板（「社死」「性暗示」等 VOC 默认文案），要回到「产品压力假设 × 用户卡画像」的匹配诊断：当前方案「'+brief+'」的核心卖点/反场景/心理触发器，与哪些 persona 的「使用场景/潜意识障碍/反驳点/AI 建议」真的对上了？这些用户的画像特征（年龄、场景、动机、障碍）让她们对当前方案的反对具体在怕什么？\n②逐分群解读——8 个分群各自的 persona 画像下，对当前方案的态度与最该警惕的点（哪些分群被画像驱动反对，哪些只是基线情绪）。\n③最该优先解决的一个矛盾——以「某张用户卡的某个心理字段 × 当前方案的某条反场景」这种具体颗粒度提，并给一句可落地改进建议。\n④上市前结论——能不能上？前置条件是什么？\n语言简洁、有洞察、可直接给老板看。每条结论都引用 persona/psycho 字段或具体原话，不要泛泛而谈。';
     aiBannerSingle('压力测试解读', null, null);
-    callLLM(sys, lastStressCtx+'\n\n（以上是规则引擎的结构化结论，请据此做你的完整解读）').then(t=>{
+    callLLM(sys, lastStressCtx+'\n\n（以上是规则引擎的结构化结论，含产品压力假设 + 用户卡画像摘要（按分群聚合的 persona + 心理层） + 代表性反对用户。请据此做你的完整解读，每条判断必须能对应到具体的 persona/psycho 字段或反场景标签。）').then(t=>{
       const el=rep.querySelector('.ai-rep'); if(el) el.textContent = t || '（调用失败或模型无返回，请检查密钥 / 模型名 / 网络是否可达）';
       const statusEl=rep.querySelector('.note span:last-child');
       if(statusEl){
@@ -2415,7 +2552,11 @@ initAI();
     const modeNote = (window.__agentMode==='deep')
       ? '请采用「深度」模式：聚焦收敛，抓住最关键的分群与矛盾，少而精，直接给结论。'
       : '请采用「扩散」模式：联想发散，从不同角度提出可能性、未被想到的风险与替代解释。';
-    return '你是「虚拟用户压力测试」工具的智能体分析师，服务于产品/运营/增长同学。下面是你所基于的真实数据与结论，请始终基于它们回答，不要编造数据或用户。\n\n'+prod+'\n\n筛选目的：'+(purpose||'（未填写，按通用目的理解）')+'\n\n数据源：'+vocInfo+'\n\n用户群摘要：'+agentSummary()+'\n\n最近一次压力测试报告：\n'+(lastStressCtx||'（尚未运行压力测试，请先去「压力测试结果」运行一次）')+'\n\n'+modeNote+'\n\n当被问到具体分群或矛盾时，引用上面的数据与原话。若用户问超出数据范围的内容，明确说明「这超出当前数据，仅作推测」。';
+    return '你是「虚拟用户压力测试」工具的智能体分析师，服务于产品/运营/增长同学。下面是你所基于的真实数据与结论，请始终基于它们回答，不要编造数据或用户。\n\n'+prod+'\n\n筛选目的：'+(purpose||'（未填写，按通用目的理解）')+'\n\n数据源：'+vocInfo+'\n\n用户群摘要：'+agentSummary()+'\n\n用户卡画像要点（按分群聚合，含 AI 接管后的 persona/真实动机/潜意识障碍/反驳点/AI 建议）：\n'+SEG_KEYS.map(k=>{
+      const us=USERS.filter(u=>u.segKey===k&&u._aiTaken&&u.persona);
+      if(!us.length) return null;
+      return SEG_NAME[k]+'：\n  - '+us.slice(0,5).map(u=>'persona=「'+u.persona+'」；使用场景='+((u.psycho&&u.psycho.scene)||'-')+'；动机='+((u.psycho&&u.psycho.motive)||'-')+'；障碍='+((u.psycho&&u.psycho.barrier)||'-')+'；反驳='+((u.psycho&&u.psycho.flaw)||'-')+'；建议='+((u.psycho&&u.psycho.suggest)||'-')).join('\n  - ');
+    }).filter(Boolean).join('\n')+'\n\n最近一次压力测试报告（含产品压力假设 + 用户卡画像摘要 + 代表性反对用户的 persona/psycho 命中）：\n'+(lastStressCtx||'（尚未运行压力测试，请先去「压力测试结果」运行一次）')+'\n\n'+modeNote+'\n\n当被问到具体分群或矛盾时，优先引用上面画像要点里的 persona/psycho 字段与产品压力假设的反场景标签；若用户问超出数据范围的内容，明确说明「这超出当前数据，仅作推测」。';
   }
 
   async function agentCall(messages){
