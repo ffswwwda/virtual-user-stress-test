@@ -740,7 +740,7 @@ body.light .stress-table th,body.light .stress-table td{border-bottom-color:var(
         </div>
       </div>
       <div class="row" style="flex-direction:column;align-items:stretch;gap:8px">
-        <div><label>属性基础筛选（不做 AI，先做硬过滤）</label><div class="hint">按部位 / 重量做关键词硬匹配，作为 AI 精筛的候选池，也可单独使用。</div></div>
+        <div><label>属性基础筛选（AI 接管时自动扩词 + 多语言召回）</label><div class="hint">按部位 / 重量做关键词匹配；AI 增强开启且载入 VOC 时，会自动用 AI 提取近义 + 多语言表达扩展词表（结果透明可见、可手动重新生成）。</div></div>
         <div style="display:flex;gap:18px;flex-wrap:wrap;align-items:center">
           <span style="font-size:13px;color:var(--ts)">部位：</span>
           <label class="mini-chk"><input type="checkbox" id="fq_part_pg" value="屁股"> 屁股</label>
@@ -751,6 +751,14 @@ body.light .stress-table th,body.light .stress-table td{border-bottom-color:var(
           <button class="btn btn-sec" onclick="quickFilterVOC()" style="padding:8px 14px;font-size:12px">应用属性筛选</button>
           <button class="btn btn-sec" onclick="clearFilterVOC()" style="padding:8px 14px;font-size:12px">取消筛选</button>
         </div>
+        <details style="margin-top:4px">
+          <summary style="font-size:12.5px;color:var(--ts);cursor:pointer;user-select:none;outline:none">▾ AI 语义扩展词（载入 VOC 后自动生成，可手刷）</summary>
+          <div id="synBlock" style="margin-top:8px;padding:10px 12px;background:rgba(0,212,255,.04);border:1px solid rgba(0,212,255,.14);border-radius:8px;font-size:12px">未生成 · AI 增强开启后载入 VOC 会自动算一次</div>
+          <div style="margin-top:8px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+            <button class="btn btn-sec" onclick="regenerateSynonyms()" style="padding:6px 12px;font-size:11.5px">重新生成</button>
+            <span id="synStat" style="font-size:11.5px;color:var(--tm)"></span>
+          </div>
+        </details>
       </div>
 
       <div class="ctrl-head"><svg class="ic-svg"><use href="#i-sliders"/></svg>用户类型比例（100 个里各类型占比）</div>
@@ -1230,7 +1238,7 @@ function loadDemo(){
   showLoadHint('✓ 已载入示例集 · '+c+' 条 / '+Object.keys(VOC).length+' 分群',true);
   return true;
 }
-function loadBuiltin(){VOC=JSON.parse(JSON.stringify(BUILTIN_VOC));document.getElementById('vocStat').textContent='当前：内置通用样本（'+Object.keys(VOC).length+' 分群）';showLoadHint('✓ 已载入内置通用样本 · '+Object.keys(VOC).length+' 分群',true);}
+function loadBuiltin(){VOC=JSON.parse(JSON.stringify(BUILTIN_VOC));document.getElementById('vocStat').textContent='当前：内置通用样本（'+Object.keys(VOC).length+' 分群）';showLoadHint('✓ 已载入内置通用样本 · '+Object.keys(VOC).length+' 分群',true);try{window.ensureSynonymsCached(VOC,'builtin');}catch(e){console.warn('ensureSynonymsCached 失败',e);}}
 function loadSource(){
   const sel=document.getElementById('vocSrc').value;
   if(sel==='demo'){if(loadDemo())return;loadBuiltin();return;}
@@ -1442,6 +1450,7 @@ async function loadFromCIHub(){
   const segN=Object.keys(VOC).length;
   document.getElementById('vocStat').textContent='当前：类目用户研究室 · 用户评价 '+pvCount+' 条 + 社媒 '+socialCount+' 条（'+segN+' 分群，3 市场 US/EU/JP）';
   showLoadHint('✓ 已载入用户评价 '+pvCount+' 条 · 社媒(百科) '+socialCount+' 条（'+segN+' 分群）'+(skippedKeys.length?' · 跳过了：'+skippedKeys.join(',').replace(/_RAW/g,'')+' (该源 JS 不合法)':''),true);
+  try{ await window.ensureSynonymsCached(VOC, 'cihub'); }catch(e){ console.warn('ensureSynonymsCached 失败', e); }
 }
 window.loadFromCIHub=loadFromCIHub;
 
@@ -1459,6 +1468,7 @@ function applyVOC(){
     VOC=nv;
     document.getElementById('vocStat').textContent='已覆盖 '+c+' 条 VOC（'+Object.keys(nv).length+' 分群）';
     showLoadHint('✓ VOC 已覆盖 · '+c+' 条 / '+Object.keys(nv).length+' 分群',true);
+    try{ window.ensureSynonymsCached(VOC); }catch(e){ console.warn('ensureSynonymsCached 失败',e); }
   }catch(e){showLoadHint('✗ 解析失败：'+e.message,false);}
 }
 
@@ -2006,6 +2016,142 @@ initAI();
     Object.keys(src||{}).forEach(seg=>{(src[seg]||[]).forEach(v=>{ out.push(Object.assign({_seg:seg}, v||{})); });});
     return out;
   }
+  // ---- AI 语义扩词（载入 VOC 后自动算一次，结果缓存 localStorage）----
+  window.VOC_SYNONYMS = null;          // 当前数据集的等价词典
+  let VOC_DATASET_ID = '';              // 当前数据集 ID（用于 localStorage 缓存 key）
+
+  function simpleHash(s){
+    let h = 0;
+    for(let i=0; i<s.length; i++) h = ((h<<5) - h + s.charCodeAt(i)) | 0;
+    return (h >>> 0).toString(36);
+  }
+  function computeDatasetId(src){
+    const list = flattenVOC(src).slice(0, 200);
+    if(!list.length) return 'empty';
+    const sig = list.map(v => (v.voice||'').slice(0, 40)).join('|');
+    return 'h_' + simpleHash(sig) + '_' + list.length;
+  }
+  function countSynonyms(syn){
+    if(!syn) return 0;
+    return (syn.part && syn.part.屁股 ? syn.part.屁股.length : 0)
+         + (syn.part && syn.part.身体 ? syn.part.身体.length : 0)
+         + (syn.weight && syn.weight.大 ? syn.weight.大.length : 0)
+         + (syn.weight && syn.weight.小 ? syn.weight.小.length : 0);
+  }
+  function renderSynonymsBlock(){
+    const block = $('synBlock'); if(!block) return;
+    const syn = window.VOC_SYNONYMS;
+    if(!syn){
+      block.innerHTML = '<span style="color:var(--tm)">未生成 · AI 增强开启后载入 VOC 会自动算一次</span>';
+      const st = $('synStat'); if(st) st.textContent='';
+      return;
+    }
+    const row = (group, label) => {
+      const arr = (syn[group] && syn[group][label]) || [];
+      return '<div style="display:flex;align-items:flex-start;gap:8px;margin:3px 0"><span style="font-size:11px;color:var(--ts);min-width:54px;flex-shrink:0;padding-top:1px">'+esc(label)+'</span><span style="font-size:11px;color:var(--tp);word-break:break-all;line-height:1.5">'+esc(arr.length ? arr.join(' / ') : '（无）')+'</span></div>';
+    };
+    block.innerHTML =
+      '<div style="font-size:11px;color:var(--ts);margin-bottom:6px">基于 '+syn.sampleCount+' 条 VOC · 生成于 '+new Date(syn.generatedAt).toLocaleString()+' · 缓存 datasetId=<code style="background:rgba(0,212,255,.08);padding:1px 5px;border-radius:3px;font-size:10.5px">'+esc(VOC_DATASET_ID)+'</code></div>'
+      + row('part', '屁股') + row('part', '身体') + row('weight', '大') + row('weight', '小');
+    const st = $('synStat'); if(st) st.textContent = '已并入筛选词表（'+countSynonyms(syn)+' 条）';
+  }
+  async function aiExtractSynonyms(src){
+    const list = flattenVOC(src);
+    if(!list.length) return null;
+    // 采样：去重 + 截断 + 取 60 条
+    const seen = new Set();
+    const sample = [];
+    for(const v of list){
+      const t = (v.voice||'').trim().slice(0, 80);
+      if(!t) continue;
+      const sig = t.slice(0, 30);
+      if(seen.has(sig)) continue;
+      seen.add(sig);
+      sample.push(t);
+      if(sample.length >= 60) break;
+    }
+    if(sample.length < 5) return null;
+    const sys = '你是 VOC 语义词典器。下面是一批真实用户评价（含中/英/日/韩/葡/俄等多语言），从中提取「部位」与「重量」的近义 + 多语言表达（包括隐晦说、俚语、不同写法）。\n'
+      + '\n'
+      + '只输出严格 JSON，格式：\n'
+      + '{\n'
+      + '  "part": {"屁股": ["词1","词2",...]，"身体": ["词1","词2",...]},\n'
+      + '  "weight": {"大": ["词1","词2",...]，"小": ["词1","词2",...]}\n'
+      + '}\n'
+      + '\n'
+      + '要求：\n'
+      + '- 每个数组 8–15 个最常见的等价词；\n'
+      + '- 包含中英日韩等多种语言；\n'
+      + '- 包括隐晦表达（如"臀部"、"菊花"、"后门"、"臀肌"等）；\n'
+      + '- 词尽量小写、去空格；\n'
+      + '- 不要解释、不要 markdown、不要任何其他文字。';
+    const user = 'VOC 样本：\n' + sample.map((s, i) => (i+1) + '. ' + s).join('\n');
+    const res = await callLLM(sys, user);
+    if(!res) return null;
+    let obj = null;
+    try{
+      const m = res.match(/\{[\s\S]*\}/);
+      obj = m ? JSON.parse(m[0]) : null;
+    }catch(e){ obj = null; }
+    if(!obj || !obj.part || !obj.weight) return null;
+    const clean = arr => Array.from(new Set((arr||[]).map(s => (s||'').toString().trim().toLowerCase()).filter(Boolean)));
+    return {
+      part:      { 屁股: clean(obj.part.屁股),      身体: clean(obj.part.身体) },
+      weight:    { 大:   clean(obj.weight.大),      小:   clean(obj.weight.小) },
+      sampleCount: sample.length
+    };
+  }
+  async function ensureSynonymsCached(src, explicitId){
+    if(!src || !Object.keys(src).length){ window.VOC_SYNONYMS = null; VOC_DATASET_ID=''; renderSynonymsBlock(); return; }
+    const datasetId = explicitId || computeDatasetId(src);
+    VOC_DATASET_ID = datasetId;
+    const cacheKey = 'vust_voc_synonyms_' + datasetId;
+    // 命中缓存
+    const cached = getLS(cacheKey, null);
+    if(cached && cached.part && cached.weight && cached.generatedAt){
+      window.VOC_SYNONYMS = cached;
+      renderSynonymsBlock();
+      if($('synStat'))$('synStat').textContent = '已并入筛选词表（'+countSynonyms(cached)+' 条 · 来自缓存）';
+      return;
+    }
+    // 未命中：检查 AI 是否启用
+    const cfg = getAICfg();
+    if(!cfg.on || !cfg.key){
+      window.VOC_SYNONYMS = null;
+      renderSynonymsBlock();
+      return;
+    }
+    if($('synStat'))$('synStat').textContent = 'AI 提取语义等价词中…';
+    try{
+      const result = await aiExtractSynonyms(src);
+      if(result){
+        const payload = Object.assign({generatedAt: Date.now()}, result);
+        saveLS(cacheKey, payload);
+        window.VOC_SYNONYMS = payload;
+        renderSynonymsBlock();
+        if($('synStat'))$('synStat').textContent = '已并入筛选词表（'+countSynonyms(payload)+' 条 · 已缓存）';
+      } else {
+        window.VOC_SYNONYMS = null;
+        renderSynonymsBlock();
+        if($('synStat'))$('synStat').textContent = '本次 AI 提取失败，请检查 AI 配置';
+      }
+    }catch(e){
+      window.VOC_SYNONYMS = null;
+      renderSynonymsBlock();
+      if($('synStat'))$('synStat').textContent = 'AI 提取异常：'+(e && e.message ? e.message : '未知');
+    }
+  }
+  async function regenerateSynonyms(){
+    const src = (window.VOC_FILTERED && window.__useFiltered && Object.keys(window.VOC_FILTERED).length) ? window.VOC_FILTERED : VOC;
+    if(!src || !Object.keys(src).length){ if($('synStat'))$('synStat').textContent='请先载入 VOC'; return; }
+    const cfg = getAICfg();
+    if(!cfg.on || !cfg.key){ if($('synStat'))$('synStat').textContent='请先开启 AI 增强并填密钥'; return; }
+    if($('synStat'))$('synStat').textContent='重新生成中…';
+    const datasetId = computeDatasetId(src);
+    const cacheKey = 'vust_voc_synonyms_' + datasetId;
+    try{ localStorage.removeItem(cacheKey); }catch(e){}
+    await ensureSynonymsCached(src, datasetId);
+  }
   function groupBySeg(list){
     const g={};
     list.forEach(v=>{ const k=v._seg||'quality'; (g[k]=g[k]||[]).push(v); });
@@ -2021,8 +2167,18 @@ initAI();
   function quickFilterVOC(){
     const src = (window.VOC_FILTERED && window.__useFiltered)? window.VOC_FILTERED : VOC;
     let list = flattenVOC(src);
-    const parts=[]; if($('fq_part_pg')&&$('fq_part_pg').checked)parts.push('屁股','菊','后庭','臀'); if($('fq_part_body')&&$('fq_part_body').checked)parts.push('身体','胸','腹','背','腿','手','脸');
-    const ws=[]; if($('fq_w_big')&&$('fq_w_big').checked)ws.push('大','重','重量','沉','加厚','加大'); if($('fq_w_small')&&$('fq_w_small').checked)ws.push('小','轻','便携','迷你','小巧');
+    // 基础硬词
+    const partsBase = { 屁股:['屁股','菊','后庭','臀'], 身体:['身体','胸','腹','背','腿','手','脸'] };
+    const weightBase = { 大:['大','重','重量','沉','加厚','加大'], 小:['小','轻','便携','迷你','小巧'] };
+    // 注入 AI 扩词（如有缓存）
+    const syn = window.VOC_SYNONYMS;
+    const pick = (group, label) => {
+      const base = (group==='part' ? partsBase[label] : weightBase[label]) || [];
+      const ai = (syn && syn[group] && syn[group][label]) || [];
+      return Array.from(new Set([...base, ...ai]));
+    };
+    const parts=[]; if($('fq_part_pg')&&$('fq_part_pg').checked) parts.push(...pick('part','屁股')); if($('fq_part_body')&&$('fq_part_body').checked) parts.push(...pick('part','身体'));
+    const ws=[]; if($('fq_w_big')&&$('fq_w_big').checked) ws.push(...pick('weight','大')); if($('fq_w_small')&&$('fq_w_small').checked) ws.push(...pick('weight','小'));
     if(parts.length||ws.length){
       list = list.filter(v=>{
         const t=((v.voice||'')+' '+(v.pain||'')+' '+(v.need||'')).toLowerCase();
@@ -2033,7 +2189,8 @@ initAI();
     }
     const grouped = groupBySeg(list);
     applyFiltered(grouped);
-    if($('purposeStat'))$('purposeStat').textContent='属性筛选 · 命中 '+list.length+' 条（'+Object.keys(grouped).length+' 分群）';
+    const aiTag = (syn && (parts.length||ws.length)) ? ' · AI 扩词已并入（'+countSynonyms(syn)+' 条）' : '';
+    if($('purposeStat'))$('purposeStat').textContent='属性筛选 · 命中 '+list.length+' 条（'+Object.keys(grouped).length+' 分群）'+aiTag;
   }
   function clearFilterVOC(){
     window.VOC_FILTERED=null; window.__useFiltered=false;
@@ -2622,7 +2779,7 @@ initAI();
     const ai=$('agentInput'); if(ai)ai.addEventListener('keydown',e=>{ if(e.key==='Enter'&&(e.metaKey||e.ctrlKey)){e.preventDefault();agentSend();} });
     // 暴露给内联 onclick 的处理函数（IIFE 作用域内函数默认不可被 HTML 直接调用）
     window.renderProductForm=renderProductForm; window.renderTags=renderTags; window.renderParts=renderParts; window.saveProduct=saveProduct;
-    window.aiScreenVOC=aiScreenVOC; window.quickFilterVOC=quickFilterVOC; window.clearFilterVOC=clearFilterVOC;
+    window.aiScreenVOC=aiScreenVOC; window.quickFilterVOC=quickFilterVOC; window.clearFilterVOC=clearFilterVOC; window.ensureSynonymsCached=ensureSynonymsCached; window.regenerateSynonyms=regenerateSynonyms;
     window.setRatioPreset=setRatioPreset; window.renderSegSliders=renderSegSliders; window.refreshStressTargets=refreshStressTargets;
     window.agentSummary=agentSummary; window.agentSystem=agentSystem; window.agentSend=agentSend; window.agentReset=agentReset;
     window.runStress=runStress; window.genUsers=genUsers; window.cardHTML=cardHTML; window.inferPsycho=inferPsycho;
