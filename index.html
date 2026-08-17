@@ -1079,8 +1079,8 @@ function scenarioParser(brief, sk){
   return {price:(price!=null?price:(scen.defaultPrice||null)), keywords:[...kw], basePrice:(scen.defaultPrice||null), type:sk};
 }
 // 单用户 × 场景 匹配：相关度 + 价格敏感度 + 立场概率 + 驱动因子归因 + 风险
-function matchUser(u, sp){
-  const uCats=userCats(u);
+  function matchUser(u, sp, brief){
+    const uCats=userCats(u);
   const inter=sp.keywords.filter(k=>uCats.includes(k));
   const rel=sp.keywords.length?Math.min(1,inter.length/sp.keywords.length+(inter.length?0.15:0)):0.3;
   const starN=parseInt(u.vstar)||3;
@@ -1839,7 +1839,7 @@ function runStress(){
   const driverCnt={};                      // 反对主因分布
   const kwCnt={};                          // 反对者命中关键词频次
   USERS.forEach(u=>{
-    const m=matchUser(u, sp);
+    const m=matchUser(u, sp, brief);
     if(m.stance==='support')sup++;
     else if(m.stance==='neutral')neu++;
     else{opp++;driverCnt[m.driver]=(driverCnt[m.driver]||0)+1;
@@ -2429,7 +2429,7 @@ initAI();
     // 画像驱动计数（persona/psycho 命中导致的反对）
     let personaDriverN=0, personaBarrierN=0, personaFlawN=0;
     USERS.forEach(u=>{
-      const m=matchUser(u, sp);
+      const m=matchUser(u, sp, brief);
       // 画像驱动：把 persona/psycho 的命中度换算成真实驱动
       let extraDriver='', extraDetail='';
       if(m.pm && m.pm.hasPsycho){
