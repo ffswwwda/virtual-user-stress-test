@@ -2518,7 +2518,8 @@ initAI();
     const rep=document.createElement('div'); rep.className='glass report-card'; rep.style.cssText='padding:16px 18px;margin-top:14px;border:1px solid rgba(168,85,247,.32)';
     rep.innerHTML='<div class="note" style="margin:0 0 8px"><b style="color:var(--purple)">AI 接管解读</b> · <span style="color:var(--cyan)">大模型生成 · 非规则结论</span> · <span style="font-size:11px;color:var(--tm)">调用中…</span></div><div class="ai-rep" style="font-size:13.5px;line-height:1.75;color:var(--ts);white-space:pre-wrap">AI 正在解读压力测试结果…</div>';
     out.appendChild(rep);
-    const sys='你是资深用户研究分析师，也是产品/增长顾问。下面是一份由规则引擎产出的虚拟用户压力测试结构化数据（含真实原话引用）。请基于这些数据，用「AI 接管」的视角做完整解读：\n①反对的深层逻辑——不要套用通用模板（「社死」「性暗示」等 VOC 默认文案），要回到「产品压力假设 × 用户卡画像」的匹配诊断：当前方案「'+brief+'」的核心卖点/反场景/心理触发器，与哪些 persona 的「使用场景/潜意识障碍/反驳点/AI 建议」真的对上了？这些用户的画像特征（年龄、场景、动机、障碍）让她们对当前方案的反对具体在怕什么？\n②逐分群解读——8 个分群各自的 persona 画像下，对当前方案的态度与最该警惕的点（哪些分群被画像驱动反对，哪些只是基线情绪）。\n③最该优先解决的一个矛盾——以「某张用户卡的某个心理字段 × 当前方案的某条反场景」这种具体颗粒度提，并给一句可落地改进建议。\n④上市前结论——能不能上？前置条件是什么？\n语言简洁、有洞察、可直接给老板看。每条结论都引用 persona/psycho 字段或具体原话，不要泛泛而谈。';
+    const briefForReport=($('scenBrief')?$('scenBrief').value.trim():'');
+    const sys='你是资深用户研究分析师，也是产品/增长顾问。下面是一份由规则引擎产出的虚拟用户压力测试结构化数据（含真实原话引用）。请基于这些数据，用「AI 接管」的视角做完整解读：\n①反对的深层逻辑——不要套用通用模板（「社死」「性暗示」等 VOC 默认文案），要回到「产品压力假设 × 用户卡画像」的匹配诊断：当前方案「'+briefForReport+'」的核心卖点/反场景/心理触发器，与哪些 persona 的「使用场景/潜意识障碍/反驳点/AI 建议」真的对上了？这些用户的画像特征（年龄、场景、动机、障碍）让她们对当前方案的反对具体在怕什么？\n②逐分群解读——8 个分群各自的 persona 画像下，对当前方案的态度与最该警惕的点（哪些分群被画像驱动反对，哪些只是基线情绪）。\n③最该优先解决的一个矛盾——以「某张用户卡的某个心理字段 × 当前方案的某条反场景」这种具体颗粒度提，并给一句可落地改进建议。\n④上市前结论——能不能上？前置条件是什么？\n语言简洁、有洞察、可直接给老板看。每条结论都引用 persona/psycho 字段或具体原话，不要泛泛而谈。';
     aiBannerSingle('压力测试解读', null, null);
     callLLM(sys, lastStressCtx+'\n\n（以上是规则引擎的结构化结论，含产品压力假设 + 用户卡画像摘要（按分群聚合的 persona + 心理层） + 代表性反对用户。请据此做你的完整解读，每条判断必须能对应到具体的 persona/psycho 字段或反场景标签。）').then(t=>{
       const el=rep.querySelector('.ai-rep'); if(el) el.textContent = t || '（调用失败或模型无返回，请检查密钥 / 模型名 / 网络是否可达）';
