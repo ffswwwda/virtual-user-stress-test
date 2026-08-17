@@ -787,7 +787,7 @@ body.light .stress-table th,body.light .stress-table td{border-bottom-color:var(
         <div id="aiCfg" style="display:none;flex-direction:column;gap:12px">
           <div style="display:flex;gap:12px;flex-wrap:wrap">
             <label style="flex:1;min-width:220px;font-size:13px;color:var(--ts)">API Base URL<input type="text" id="aiBase" placeholder="https://api.deepseek.com/v1" value="https://api.deepseek.com/v1" style="width:100%;margin-top:6px"></label>
-            <label style="flex:1;min-width:180px;font-size:13px;color:var(--ts)">模型名<input type="text" id="aiModel" placeholder="deepseek-chat" value="deepseek-v4-flash" style="width:100%;margin-top:6px"></label>
+            <label style="flex:1;min-width:180px;font-size:13px;color:var(--ts)">模型名<input type="text" id="aiModel" placeholder="deepseek-chat" value="deepseek-chat" style="width:100%;margin-top:6px"></label>
           </div>
           <label style="font-size:13px;color:var(--ts)">API Key（仅存本机）<input type="password" id="aiKey" placeholder="sk-..." style="width:100%;margin-top:6px"></label>
           <div style="display:flex;gap:10px;align-items:center">
@@ -800,7 +800,7 @@ body.light .stress-table th,body.light .stress-table td{border-bottom-color:var(
           </div>
           <div id="aiConnStat" style="display:none;margin-top:8px;padding:8px 10px;border-radius:8px;font-size:12px;line-height:1.5"></div>
         </div>
-        <p class="note" style="margin:10px 0 0">默认推荐 <b style="color:var(--cyan)">DeepSeek</b>（国内可直连）：Base = <code style="background:rgba(0,212,255,.1);padding:1px 6px;border-radius:4px">https://api.deepseek.com/v1</code>，Model = <code style="background:rgba(0,212,255,.1);padding:1px 6px;border-radius:4px">deepseek-v4-flash</code>。也支持 OpenAI / 通义 / 智谱等其他 OpenAI 兼容端点。密钥仅存本机浏览器。</p>
+        <p class="note" style="margin:10px 0 0">默认推荐 <b style="color:var(--cyan)">DeepSeek</b>（国内可直连）：Base = <code style="background:rgba(0,212,255,.1);padding:1px 6px;border-radius:4px">https://api.deepseek.com/v1</code>，Model = <code style="background:rgba(0,212,255,.1);padding:1px 6px;border-radius:4px">deepseek-chat</code>（DeepSeek 官方普通对话模型，非 reasoning 模型；如要推理长链可改 <code style="background:rgba(0,212,255,.1);padding:1px 6px;border-radius:4px">deepseek-reasoner</code>）。<b style="color:var(--orange)">若模型返回的内容始终空，请勿使用「deepseek-v4-flash」之类非官方名称</b>——DeepSeek 官方只有 <code style="background:rgba(0,212,255,.1);padding:1px 6px;border-radius:4px">deepseek-chat</code> 与 <code style="background:rgba(0,212,255,.1);padding:1px 6px;border-radius:4px">deepseek-reasoner</code>。也支持 OpenAI / 通义 / 智谱等其他 OpenAI 兼容端点。密钥仅存本机浏览器。</p>
       </div>
       <button class="btn btn-primary" id="genBtn" style="width:100%;margin-top:8px" onclick="generate()"><svg class="ic-svg" style="width:18px;height:18px;margin-right:8px;vertical-align:-3px"><use href="#i-zap"/></svg>生成虚拟用户群</button>
       <div class="genbar-wrap" id="genWrap">
@@ -1534,12 +1534,12 @@ let lastStressCtx='';
 let lastStressOpp=[];
 function getAICfg(){
   let s={};try{s=JSON.parse(localStorage.getItem('vust_ai_cfg')||'{}');}catch(e){}
-  return {base:s.base||'https://api.deepseek.com/v1', model:s.model||'deepseek-v4-flash', key:s.key||'', on:!!s.on};
+  return {base:s.base||'https://api.deepseek.com/v1', model:s.model||'deepseek-chat', key:s.key||'', on:!!s.on};
 }
 function saveAICfg(){
   const cfg=getAICfg();
   cfg.base=document.getElementById('aiBase').value.trim()||'https://api.deepseek.com/v1';
-  cfg.model=document.getElementById('aiModel').value.trim()||'deepseek-v4-flash';
+  cfg.model=document.getElementById('aiModel').value.trim()||'deepseek-chat';
   cfg.key=document.getElementById('aiKey').value.trim();
   localStorage.setItem('vust_ai_cfg', JSON.stringify(cfg));
   document.getElementById('aiSaveHint').textContent='已保存（仅本机）';
@@ -1631,8 +1631,15 @@ function aiTest(){
         if(last.status) lines.push('HTTP 状态 · '+last.status);
         if(last.finish_reason) lines.push('finish_reason · '+last.finish_reason);
         if(last.content_len!==undefined) lines.push('content 长度 · '+last.content_len);
-        if(last.reasoning_len) lines.push('reasoning_content 长度 · '+last.reasoning_len+'（说明你用的是 reasoning 模式模型，请改用 deepseek-chat）');
+        if(last.reasoning_len) lines.push('reasoning_content 长度 · '+last.reasoning_len+'（说明你用的是 reasoning 模式模型，请改用 deepseek-chat 或 deepseek-reasoner 时显式接受只回 reasoning）');
         if(last.rawHead) lines.push('原文前 200 字 · '+last.rawHead.replace(/\s+/g,' '));
+        lines.push('');
+        lines.push('—— 排查建议 ——');
+        if(/v4-flash|v3|chatglm|qwen-max|自定义/i.test(cfg.model)===false && (last.status===404 || last.status===400)) lines.push('· 模型名「'+cfg.model+'」可能不在该服务端（HTTP '+last.status+'）。DeepSeek 官方只有 deepseek-chat / deepseek-reasoner；OpenAI 是 gpt-4o-mini 等。');
+        else if(/deepseek/i.test(cfg.base) && !/^deepseek-(chat|reasoner)$/.test(cfg.model)) lines.push('· DeepSeek 端点请用 deepseek-chat 或 deepseek-reasoner（不要用 v4-flash 之类非官方名称）。');
+        else if(last.reasoning_len) lines.push('· 模型返回了 reasoning_content 但 content 空（reasoning 模式），请改 deepseek-chat。');
+        else if(last.status===401) lines.push('· HTTP 401：密钥无效 / 已过期 / 余额不足。请到 DeepSeek 控制台查 Usage / API Keys。');
+        else if(!last.status) lines.push('· 网络/跨域错误：检查 API Base 域名能否直连（DeepSeek 国内可直连）。');
         box.style.whiteSpace='pre-wrap'; box.style.fontSize='12px'; box.style.lineHeight='1.6';
         box.textContent=lines.join('\n');
       }
@@ -1707,6 +1714,19 @@ function aiCard(btn){
 }
 document.getElementById('aiThemeBtn').addEventListener('click',aiTheme);
 function initAI(){
+  // 自动修正：若 localStorage 里 model 是非官方/不存在名称（v4-flash、flash、qwen-max 等），回归 deepseek-chat
+  try{
+    const raw=localStorage.getItem('vust_ai_cfg'); const cfg=raw?JSON.parse(raw):null;
+    if(cfg && cfg.model){
+      const m=String(cfg.model).toLowerCase();
+      const isOfficial = /^deepseek-(chat|reasoner|coder)$/.test(cfg.model) || /^gpt-/.test(cfg.model) || /^claude-/.test(cfg.model) || /^gemini-/.test(cfg.model) || /^qwen(2|-)/.test(cfg.model) || /^glm-/.test(cfg.model) || /^moonshot-/.test(cfg.model);
+      if(!isOfficial){
+        console.warn('[AI] 检测到非官方/未知模型名「'+cfg.model+'」，自动改为 deepseek-chat');
+        cfg.model='deepseek-chat';
+        localStorage.setItem('vust_ai_cfg', JSON.stringify(cfg));
+      }
+    }
+  }catch(e){}
   const cfg=getAICfg();
   document.getElementById('aiBase').value=cfg.base;
   document.getElementById('aiModel').value=cfg.model;
@@ -2046,26 +2066,106 @@ initAI();
   };
 
   /* ---------- D. 心理推导层（AI 接管：态度/小传/心理全由大模型推导） ---------- */
+  // 字段别名映射：AI 经常返回中文/同义词/大小写不一，全部容错
+  const PSY_ALIAS = {
+    private:['private','Private','private_attitude','inner_stance','true_attitude','hidden_stance','real_attitude','inner_attitude','真实态度','私态度','私下态度','真实立场','私密态度'],
+    persona:['persona','Persona','character','archetype','profile','人物小传','小传','人设','画像','人物画像'],
+    motive:['motive','Motive','motivation','driving_force','inner_motivation','drive','真实动机','动机','内心驱动'],
+    barrier:['barrier','Barrier','obstacle','friction','blocker','潜意识障碍','障碍','阻力','卡点'],
+    attach:['attach','attachment','affinity','emotional_anchor','love_point','情感依附','情感依附点','依附','痛点以外的情感锚'],
+    risk:['risk','aversion','risk_aversion','规避','风险规避','风险倾向'],
+    scene:['scene','scenario','use_scene','usage','使用场景','场景'],
+    quote:['quote_back','echo','原话呼应','引用','代表原话'],
+    flaw:['flaw','flaw_finding','counterpoint','反驳点','反方论点','反驳'],
+    suggest:['suggestion','actionable','建议','改进建议','可执行建议']
+  };
+  // 私有：把 AI 给的 raw 对象按别名归一
+  function pickAi(obj, key){
+    if(!obj) return undefined;
+    // 第一优先查原名 obj[key]，再去别名表；这样既兼容 'suggest' 也兼容 'suggestion'
+    const aliases=[key].concat(PSY_ALIAS[key]||[]);
+    for(const k of aliases){
+      if(obj[k]!==undefined && obj[k]!==null && obj[k]!=='') return obj[k];
+    }
+    return undefined;
+  }
+  function toNum01(v){
+    if(typeof v==='number') return Math.min(1,Math.max(0,v));
+    if(typeof v!=='string') return null;
+    const s=v.trim();
+    // 中文/半定量 词 → 数值（仅在解析不出数字时退路）
+    const cnMap={'强烈反对':0.05,'反对':0.2,'偏反对':0.3,'中立':0.5,'偏支持':0.7,'支持':0.8,'强烈支持':0.95};
+    if(cnMap[s]!==undefined) return cnMap[s];
+    const m=s.match(/-?\d*\.?\d+/);
+    if(!m) return null;
+    let n=parseFloat(m[0]);
+    if(!isFinite(n)) return null;
+    if(n>1 && n<=100) n=n/100; // 0~100 → 0~1
+    return Math.min(1,Math.max(0,n));
+  }
+  // 兼容三种 JSON 形态：[...] / {"users":[...]} / ```json [...] ```
+  function parseAiArray(raw){
+    if(!raw) return null;
+    let s=raw;
+    // 去掉 ```json ... ``` 围栏
+    s=s.replace(/```(?:json)?\s*([\s\S]*?)```/gi,'$1').trim();
+    // 先尝试整段解析
+    try{ const j=JSON.parse(s); return unwrapAiArray(j); }catch(_){}
+    // 抓第一个 [...] / {...}
+    const mArr=s.match(/\[[\s\S]*\]/);
+    if(mArr){ try{ const j=JSON.parse(mArr[0]); return unwrapAiArray(j); }catch(_){} }
+    const mObj=s.match(/\{[\s\S]*\}/);
+    if(mObj){ try{ const j=JSON.parse(mObj[0]); return unwrapAiArray(j); }catch(_){} }
+    return null;
+  }
+  function unwrapAiArray(j){
+    if(Array.isArray(j)) return j;
+    if(j && Array.isArray(j.users)) return j.users;
+    if(j && Array.isArray(j.data)) return j.data;
+    if(j && Array.isArray(j.items)) return j.items;
+    if(j && Array.isArray(j.results)) return j.results;
+    if(j && typeof j==='object') return [j];
+    return null;
+  }
   async function inferPsycho(users){
     const cfg=getAICfg();
     if(!cfg.on||!cfg.key) return;
     aiBannerStart('生成AI画像', users.length, 8);
-    const B=8; let ok=0, calls=0;
+    const B=8; let ok=0, calls=0, totalParsed=0;
     for(let i=0;i<users.length;i+=B){
       const batch=users.slice(i,i+B);
-      const sys='你是消费心理分析师，也是用户研究员。下面 N 位虚拟用户的「真实原话」是锚定层（固定事实，不可更改、不可编造）。请基于每位真实原话，为每一位输出一个 JSON 对象（整个回复是一个 JSON 数组，长度与用户数一致），每位含：private（0~1 的数值，代表你判断的「私下真实态度」，0=强烈反对、0.5=中立、1=强烈支持）、persona（一句话人物小传，16 字内，含身份/场景/典型动作）、motive（真实动机：所言 vs 所想）、barrier（潜意识障碍）、attach（情感依附点）、risk（风险规避倾向），后四者每字段一句话。只输出 JSON，不要解释。';
+      const sys='你是消费心理分析师，也是用户研究员。下面 N 位虚拟用户的「真实原话」是锚定层（固定事实，不可更改、不可编造）。请基于每位真实原话，为每一位输出一个 JSON 对象，整个回复是一个 JSON 数组（也可包在 {users:[...]} 里），长度与用户数一致，每位请尽量包含以下字段（key 允许同义词，比如 private / inner_stance / 真实态度 都算）：private（0~1 的数值，代表私下真实态度，0=强烈反对、0.5=中立、1=强烈支持）、persona（一句话人物小传，16 字内，含身份/场景/典型动作）、motive（真实动机：所言 vs 所想）、barrier（潜意识障碍）、attach（情感依附点）、risk（风险规避倾向）；如有额外洞察，可补充 scene（使用场景）、quote（代表原话回应）、flaw（反驳点）、suggest（建议）。只输出 JSON，不要解释。';
       const user=batch.map((u,idx)=>(idx+1)+'. 分群='+u.segName+' 公开态度='+u.statedLabel+' 原话：“'+(u.voice||'').slice(0,140)+'”').join('\n');
       let res=null; try{ res=await callLLM(sys,user); }catch(e){ res=null; }
       calls++;
-      let arr=null;
-      if(res){ try{ const m=res.match(/\[[\s\S]*\]/); arr=m?JSON.parse(m[0]):null; }catch(e){ arr=null; } }
-      if(Array.isArray(arr)){
+      let arr=parseAiArray(res);
+      if(Array.isArray(arr) && arr.length){
         ok++;
-        batch.forEach((u,k)=>{ const o=arr[k]; if(!o)return;
-          if(typeof o.private==='number'){ u.private=Math.min(1,Math.max(0,o.private)); u.privateLabel=stanceLabel(u.private); u.gap=Math.abs(u.private-u.stated)>0.22; }
-          if(o.persona) u.persona=String(o.persona).slice(0,40);
-          u.psycho={motive:o.motive||'',barrier:o.barrier||'',attach:o.attach||'',risk:o.risk||''};
+        totalParsed += arr.length;
+        batch.forEach((u,k)=>{
+          const o=arr[k]; if(!o||typeof o!=='object') return;
+          // 保留 AI 原文（卡片折叠块会用到）
+          u._aiRaw = o;
+          // private：接受 number/数字字符串/中文程度
+          const pv=toNum01(pickAi(o,'private'));
+          if(pv!==null){
+            u.private=pv; u.privateLabel=stanceLabel(u.private); u.gap=Math.abs(u.private-u.stated)>0.22;
+          }
+          // persona：不限长度（去掉硬截 40 字，AI 想写多少就多少）
+          const pers=pickAi(o,'persona');
+          if(pers) u.persona=String(pers);
+          // 心理层：四个标准字段全做别名匹配
+          const p={};
+          ['motive','barrier','attach','risk','scene','quote','flaw','suggest'].forEach(k=>{
+            const v=pickAi(o,k); if(v!==undefined) p[k]=String(v);
+          });
+          if(Object.keys(p).length) u.psycho=p;
+          // 标记 AI 接管（任一字段被填就算接管）
+          u._aiTaken = !!(pv!==null || u.persona || Object.keys(p).length);
         });
+      }else if(res){
+        // 调通了但解析失败 —— 也要把原文存下供调试
+        batch.forEach(u=>{ if(!u._aiRaw) u._aiRaw={_unparsed:res.slice(0,400)}; });
       }
       aiBannerProgress(Math.min(i+B, users.length), users.length, ok, calls);
       if(typeof renderGrid==='function') renderGrid();
@@ -2078,7 +2178,7 @@ initAI();
     }else if(ok>0){
       aiBannerDone(true, null, calls, ok);
       const gt=document.getElementById('genTxt');
-      if(gt) gt.textContent='AI 接管完成：'+users.length+' 位用户画像已由大模型生成（私态度 / 人物小传 / 心理推导层已更新）';
+      if(gt) gt.textContent='AI 接管完成：'+calls+' 次调用，成功 '+ok+' 批，共消化 '+totalParsed+' 条 AI 返回字段。模型名='+cfg.model+'。卡片将显示 AI 给出的所有维度（含 AI 拓展信息）。';
     }else{
       aiBannerDone(false, '本次没有调用', calls, ok);
     }
@@ -2131,19 +2231,59 @@ initAI();
     }
   }
   function psychoHTML(u){
-    const d=window.__psychoDims; const p=u.psycho;
-    if(!p) return '';
+    const p=u.psycho; if(!p) return '';
+    const labelMap={motive:'真实动机',barrier:'潜意识障碍',attach:'情感依附点',risk:'风险规避',scene:'使用场景',quote:'代表原话回应',flaw:'反驳点',suggest:'AI 建议'};
+    const order=['motive','barrier','attach','risk','scene','quote','flaw','suggest'];
     const rows=[];
-    if(d.motive&&p.motive)rows.push('<div class="psy-row"><b>真实动机</b>'+esc(p.motive)+'<span class="conf conf-m">所言vs所想</span></div>');
-    if(d.barrier&&p.barrier)rows.push('<div class="psy-row"><b>潜意识障碍</b>'+esc(p.barrier)+'</div>');
-    if(d.attach&&p.attach)rows.push('<div class="psy-row"><b>情感依附点</b>'+esc(p.attach)+'</div>');
-    if(d.risk&&p.risk)rows.push('<div class="psy-row"><b>风险规避倾向</b>'+esc(p.risk)+'</div>');
+    order.forEach(k=>{
+      if(p[k] && window.__psychoDims===undefined) {/* 默认全显示 */}
+      if(p[k]) rows.push('<div class="psy-row"><b>'+labelMap[k]+'</b>'+esc(p[k])+'</div>');
+    });
     if(!rows.length) return '';
-    return '<div class="layer psy-layer"><div class="lh"><svg class="ic-svg"><use href="#i-zap"/></svg>心理推导层 · AI 基于真实原话推导（可自定义维度）</div>'+rows.join('')+'</div>';
+    return '<div class="layer psy-layer"><div class="lh"><svg class="ic-svg"><use href="#i-zap"/></svg>心理推导层 · AI 基于真实原话推导（含 AI 拓展字段）</div>'+rows.join('')+'</div>';
+  }
+  // AI 拓展信息块：把 AI 给的但卡片尚未显示的字段都列出来
+  function aiExtraHTML(u){
+    if(!u || !u._aiRaw || typeof u._aiRaw!=='object') return '';
+    const known=new Set(['private','private_attitude','inner_stance','true_attitude','hidden_stance','real_attitude','inner_attitude','真实态度','私态度','私下态度','真实立场','私密态度',
+                        'persona','character','archetype','profile','人物小传','小传','人设','画像','人物画像',
+                        'motive','motivation','driving_force','inner_motivation','drive','真实动机','动机','内心驱动',
+                        'barrier','obstacle','friction','blocker','潜意识障碍','障碍','阻力','卡点',
+                        'attach','attachment','affinity','emotional_anchor','love_point','情感依附','情感依附点','依附','痛点以外的情感锚',
+                        'risk','aversion','risk_aversion','规避','风险规避','风险倾向',
+                        'scene','scenario','use_scene','usage','使用场景','场景',
+                        'quote','quote_back','echo','原话呼应','引用','代表原话',
+                        'flaw','flaw_finding','counterpoint','反驳点','反方论点','反驳',
+                        'suggest','suggestion','actionable','建议','改进建议','可执行建议']);
+    const extras=Object.keys(u._aiRaw).filter(k=>!known.has(k) && u._aiRaw[k]!==null && u._aiRaw[k]!=='');
+    // 也算 persona 全文 vs 卡片中 persona 的差异
+    let personaFull='';
+    if(u.persona && u._aiRaw && (typeof u._aiRaw.persona==='string')) personaFull=u._aiRaw.persona;
+    const rows=[];
+    extras.forEach(k=>{
+      const v=u._aiRaw[k];
+      if(typeof v==='object'){ rows.push('<div class="ai-extra-row"><b>'+esc(k)+'</b><pre style="margin:4px 0 0;font-size:11.5px;white-space:pre-wrap;color:var(--ts)">'+esc(JSON.stringify(v,null,2))+'</pre></div>'); }
+      else rows.push('<div class="ai-extra-row"><b>'+esc(k)+'</b> '+esc(String(v))+'</div>');
+    });
+    if(!rows.length) return '';
+    return '<div class="layer ai-extra-layer" style="margin-top:8px;border-left:2px solid var(--cyan);padding-left:12px"><div class="lh" style="color:var(--cyan);font-size:12.5px">AI 拓展信息（共 '+extras.length+' 条卡片外字段）</div>'+rows.join('')+'</div>';
+  }
+  // AI 原文 JSON 折叠块：让用户肉眼看到 AI 实际回了啥
+  function aiDebugHTML(u){
+    if(!u || !u._aiRaw) return '';
+    const raw=JSON.stringify(u._aiRaw,null,2);
+    return '<details style="margin-top:8px;font-size:11.5px;color:var(--tm)"><summary style="cursor:pointer;color:var(--cyan)">查看 AI 实际返回的 JSON（点击展开 / 收起）</summary><pre style="margin:6px 0 0;padding:10px;background:rgba(0,0,0,.18);border-radius:6px;max-height:260px;overflow:auto;white-space:pre-wrap;word-break:break-all">'+esc(raw)+'</pre></details>';
   }
   cardHTML = function(u,idx){
     const badges='<div class="badges">'+(u.extreme?'<span class="badge b-ext">极端/领先</span>':'')+(u.isKOL?'<span class="badge b-kol">KOL</span>':'')+'<span class="badge b-band">'+u.band+'</span></div>';
     const confM=u.gap?'<span class="conf conf-m">中置信</span>':'<span class="conf conf-m">中置信</span>';
+    // 「生成层」标签：按 _aiTaken 判定
+    const aiTaken=!!u._aiTaken;
+    const layerLabel=aiTaken
+      ? '生成层 · <span style="color:var(--cyan);font-weight:600">AI 已接管</span>（私态度/小传/心理层由大模型推导）'
+      : '生成层 · 算法生成（带置信度，AI 未接管）';
+    // persona 行：显示全文（不再 40 截断）
+    const personaRow = u.persona? '<div class="kv"><b>人物小传</b> '+esc(u.persona)+'</div>' : '';
     return '<div class="glass ucard" data-seg="'+u.segKey+'" data-ext="'+u.extreme+'" data-idx="'+idx+'" data-voice="'+esc(u.voice)+'">'+
       '<div class="uh"><div class="who"><div class="av" style="background:'+u.color+'">'+u.segName[0]+'</div>'+
       '<div><div class="nm">'+u.segName+' #'+u.id+'</div><div class="sb">影响力权重 '+u.influence+' · 活跃度 '+((u.activity*100|0))+'%</div></div></div>'+badges+'</div>'+
@@ -2154,16 +2294,18 @@ initAI();
         '<div class="kv"><b>痛点</b> '+(u.pain||'—')+' · <b>需求</b> '+(u.need||'—')+'</div>'+
       '</div>'+
       '<div class="layer a" id="genLayer-' + u.id + '">'+
-        '<div class="lh"><svg class="ic-svg"><use href="#i-users"/></svg>'+((u.persona||u.psycho)?'生成层 · <span style="color:var(--cyan);font-weight:600">AI 已接管</span>（私态度/小传/心理层由大模型推导）':'生成层 · 算法生成（带置信度，AI 未接管）')+'</div>'+
+        '<div class="lh"><svg class="ic-svg"><use href="#i-users"/></svg>'+layerLabel+'</div>'+
         '<div class="kv"><b>私态度</b> '+u.privateLabel+confM+(u.gap?' · 与公开声音存在 say-do gap':'')+'</div>'+
-        (u.persona?'<div class="kv"><b>人物小传</b> '+esc(u.persona)+'</div>':'')+
+        personaRow+
         '<div class="kv"><b>人口代理</b> '+u.demo+'<span class="conf conf-l">低置信·推断非真实</span></div>'+
       '</div>'+
       psychoHTML(u)+
-      '<div style="display:flex;gap:8px;align-items:center;margin-top:2px">'+
+      aiExtraHTML(u)+
+      '<div style="display:flex;gap:8px;align-items:center;margin-top:6px">'+
         '<button class="btn" onclick="aiCard(this)" style="font-size:12px;padding:7px 14px"><svg class="ic-svg" style="width:14px;height:14px;margin-right:6px;vertical-align:-2px"><use href="#i-zap"/></svg>AI 解读</button>'+
       '</div>'+
       '<div class="aiCardOut" style="margin-top:8px;font-size:12.5px;line-height:1.6;color:var(--ts);white-space:pre-wrap;display:none"></div>'+
+      aiDebugHTML(u)+
     '</div>';
   };
 
