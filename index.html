@@ -1081,32 +1081,37 @@ function scenarioParser(brief, sk){
 // 单用户 × 场景 匹配：相关度 + 价格敏感度 + 立场概率 + 驱动因子归因 + 风险
   function matchUser(u, sp, brief){
     const uCats=userCats(u);
-  const inter=sp.keywords.filter(k=>uCats.includes(k));
-  const rel=sp.keywords.length?Math.min(1,inter.length/sp.keywords.length+(inter.length?0.15:0)):0.3;
-  const starN=parseInt(u.vstar)||3;
-  const neg=u.sentiment==='负'?1:(u.sentiment==='正'?0:0.5);
-  let priceFactor=0, priceNote='';
-  if(sp.keywords.includes('price') && u.refPrice!=null && sp.price!=null && u.refPrice>0){
-    priceFactor=Math.max(0,(sp.price-u.refPrice)/u.refPrice);    // 高于参考价→>0
-    priceNote=(sp.price>u.refPrice?'场景价高于':'场景价低于')+'其参考价 '+u.refPrice+'（场景价 '+sp.price+'）';
-  }else if(sp.keywords.includes('price') && u.refPrice==null){
-    priceNote='该用户未提及参考价，价格敏感度未知';
-  }
-  // 立场概率：私态度（persona 基线）× 场景相关性修正
-  const disp = 1 - u.private;                                  // 基线反对倾向 0~1
-  const sceneSignal = Math.min(1, rel*neg*0.6 + priceFactor*0.3 + (starN<=2?0.2:0)*neg);
-  let pOpp=Math.min(1,Math.max(0, disp*0.6 + sceneSignal*0.4));
-  const stance=pOpp>=0.55?'oppose':pOpp>=0.45?'neutral':'support';
-  // 驱动因子归因
-  let driver='disposition', driverDetail='基线情绪/态度倾向';
-  if(priceFactor>0.1 && sp.keywords.includes('price')){driver='price';driverDetail=priceNote;}
-  else if(rel>0.4 && neg>=0.5){driver='concern';driverDetail='场景击中其痛点/需求关键词「'+inter.map(k=>{const c=CONCERN_CATS.find(x=>x.key===k);return c?c.label:k;}).join('、')+'」';}
-  else if(starN<=2){driver='star';driverDetail='原评价星级偏低（'+starN+'★）';}
-  else if(priceNote){driver='price';driverDetail=priceNote;}
-const risk=+(u.influence*(0.5+u.intensity)).toFixed(2);
-  // 用户卡画像 vs 当前方案：使用场景命中 / 障碍被激发 / 反驳点直击 → 决定是否反对的核心
-  const pm = psychoMatch(u, brief||'', sp);
-  return {rel:Math.round(rel*100)/100,inter,priceFactor,priceNote,prob:pOpp,stance,driver,driverDetail,risk,starN, pm};
+    const inter=sp.keywords.filter(k=>uCats.includes(k));
+    const rel=sp.keywords.length?Math.min(1,inter.length/sp.keywords.length+(inter.length?0.15:0)):0.3;
+    const starN=parseInt(u.vstar)||3;
+    const neg=u.sentiment==='负'?1:(u.sentiment==='正'?0:0.5);
+    let priceFactor=0, priceNote='';
+    if(sp.keywords.includes('price') && u.refPrice!=null && sp.price!=null && u.refPrice>0){
+      priceFactor=Math.max(0,(sp.price-u.refPrice)/u.refPrice);    // 高于参考价→>0
+      priceNote=(sp.price>u.refPrice?'场景价高于':'场景价低于')+'其参考价 '+u.refPrice+'（场景价 '+sp.price+'）';
+    }else if(sp.keywords.includes('price') && u.refPrice==null){
+      priceNote='该用户未提及参考价，价格敏感度未知';
+    }
+    // 立场概率 = 基线态度 + 场景相关性
+    const disp = 1 - u.private;                                  // 基线反对倾向 0~1
+    const sceneSignal = Math.min(1, rel*neg*0.6 + priceFactor*0.3 + (starN<=2?0.2:0)*neg);
+    // 用户卡画像 vs 当前方案：反驳点直击 / 障碍被激发 / 使用场景重合 —— 这是反对的「第二引擎」
+    const pm = psychoMatch(u, brief||'', sp);
+    const personaOpp = Math.min(1, pm.flawHit*0.9 + pm.barrierHit*0.7 + pm.sceneHit*0.3);
+    // 取强：画像强冲突可独立触发反对（即使基线态度温和），否则用基线×场景
+    let pOpp=Math.min(1, Math.max(disp*0.6 + sceneSignal*0.4, personaOpp));
+    const stance=pOpp>=0.55?'oppose':pOpp>=0.45?'neutral':'support';
+    // 主驱动因子：画像冲突显著时优先用画像驱动，否则走原逻辑
+    let driver='disposition', driverDetail='基线情绪/态度倾向';
+    if(pm.hasPsycho && pm.flawHit>=0.4){ driver='persona-flaw'; driverDetail='画像反驳点直击当前方案反场景（'+pm.flawHitLabels.join('/')+'）：'+(u.psycho.flaw||''); }
+    else if(pm.hasPsycho && pm.barrierHit>=0.3){ driver='persona-barrier'; driverDetail='画像潜意识障碍被当前方案放大（'+pm.barrierHitLabels.join('/')+'）：'+(u.psycho.barrier||''); }
+    else if(pm.hasPsycho && pm.sceneHit>=0.3){ driver='persona-scene'; driverDetail='画像使用场景与当前方案重合（'+pm.sceneHitLabels.join('/')+'）：'+(u.psycho.scene||''); }
+    else if(priceFactor>0.1 && sp.keywords.includes('price')){driver='price';driverDetail=priceNote;}
+    else if(rel>0.4 && neg>=0.5){driver='concern';driverDetail='场景击中其痛点/需求关键词「'+inter.map(k=>{const c=CONCERN_CATS.find(x=>x.key===k);return c?c.label:k;}).join('、')+'」';}
+    else if(starN<=2){driver='star';driverDetail='原评价星级偏低（'+starN+'★）';}
+    else if(priceNote){driver='price';driverDetail=priceNote;}
+    const risk=+(u.influence*(0.5+u.intensity)).toFixed(2);
+    return {rel:Math.round(rel*100)/100,inter,priceFactor,priceNote,prob:+pOpp.toFixed(2),stance,driver,driverDetail,risk,starN, pm};
   }
 
   /* ---------- 产品压力假设：从 brief + sp 推断当前方案下的「核心卖点/可能反场景/触发的心理机制」 ---------- */
@@ -2426,17 +2431,13 @@ initAI();
     const hyp = inferProductHypothesis(brief, sp);
     let sup=0,neu=0,opp=0; const concerns=[]; const driverCnt={}, kwCnt={};
     const bySeg={}; SEG_KEYS.forEach(k=>bySeg[k]={sup:0,neu:0,opp:0,risk:0,n:0,psy:0});
-    // 画像驱动计数（persona/psycho 命中导致的反对）
-    let personaDriverN=0, personaBarrierN=0, personaFlawN=0;
+    // 画像驱动计数（persona-flaw / barrier / scene 由 matchUser 直接给为主驱动）
+    let personaFlawN=0, personaBarrierN=0, personaSceneN=0;
     USERS.forEach(u=>{
       const m=matchUser(u, sp, brief);
-      // 画像驱动：把 persona/psycho 的命中度换算成真实驱动
-      let extraDriver='', extraDetail='';
-      if(m.pm && m.pm.hasPsycho){
-        if(m.pm.flawHit>=0.4){ personaFlawN++; extraDriver='persona-flaw'; extraDetail = '反驳点直击当前方案反场景（'+m.pm.flawHitLabels.join('/')+'）：'+(u.psycho.flaw||''); }
-        else if(m.pm.barrierHit>=0.3){ personaBarrierN++; extraDriver='persona-barrier'; extraDetail = '潜意识障碍被当前方案放大（'+m.pm.barrierHitLabels.join('/')+'）：'+(u.psycho.barrier||''); }
-        else if(m.pm.sceneHit>=0.3){ extraDriver='persona-scene'; extraDetail = '使用场景与当前方案重合（'+m.pm.sceneHitLabels.join('/')+'）：'+(u.psycho.scene||''); }
-      }
+      if(m.driver==='persona-flaw'){ personaFlawN++; m._extraDriver='persona-flaw'; m._extraDetail=m.driverDetail; }
+      else if(m.driver==='persona-barrier'){ personaBarrierN++; m._extraDriver='persona-barrier'; m._extraDetail=m.driverDetail; }
+      else if(m.driver==='persona-scene'){ personaSceneN++; m._extraDriver='persona-scene'; m._extraDetail=m.driverDetail; }
       const cell=bySeg[u.segKey]||(bySeg[u.segKey]={sup:0,neu:0,opp:0,risk:0,n:0,psy:0});
       cell.n++; cell.psy+=(m.pm&&m.pm.hasPsycho?1:0);
       if(m.stance==='support'){sup++;cell.sup++;}
@@ -2444,7 +2445,6 @@ initAI();
       else{
         opp++;cell.opp++;cell.risk+=m.risk;
         driverCnt[m.driver]=(driverCnt[m.driver]||0)+1;
-        if(extraDriver){ driverCnt[extraDriver]=(driverCnt[extraDriver]||0)+1; m._extraDriver=extraDriver; m._extraDetail=extraDetail; }
         m.inter.forEach(k=>kwCnt[k]=(kwCnt[k]||0)+1);
         concerns.push({u,m});
       }
@@ -2503,8 +2503,7 @@ initAI();
         const sceneLine = (c.u.psycho&&c.u.psycho.scene)?('<div style="font-size:12px;color:var(--tm)"><b>使用场景</b> '+esc(c.u.psycho.scene)+(c.u.psycho.motive?(' · <b>真实动机</b> '+esc(c.u.psycho.motive)):'')+(c.u.psycho.barrier?(' · <b>潜意识障碍</b> '+esc(c.u.psycho.barrier)):'')+'</div>'):'';
         const flawLine = (c.u.psycho&&c.u.psycho.flaw)?('<div style="font-size:12px;color:var(--red);margin-top:2px"><b>反驳点</b> '+esc(c.u.psycho.flaw)+(c.u.psycho.suggest?(' · <b>AI 建议</b> '+esc(c.u.psycho.suggest)):'')+'</div>'):'';
         const pmBadge = (c.m.pm&&c.m.pm.hasPsycho)?('<span style="font-size:11px;padding:2px 8px;border-radius:10px;background:rgba(168,85,247,.16);color:#d8b4fe">画像命中 '+(c.m.pm.barrierHit+c.m.pm.flawHit+c.m.pm.sceneHit).toFixed(2)+'</span>'):'';
-        const extraBadge = c.m._extraDriver?('<span style="font-size:11px;padding:2px 8px;border-radius:10px;background:rgba(244,114,182,.18);color:#f9a8d4">'+esc(DRIVER_LABEL[c.m._extraDriver]||c.m._extraDriver)+'</span>'):'';
-        return '<div class="cc"><div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px"><b>'+c.u.segName+'</b>（'+c.u.band+'）'+(c.u.extreme?'<span class="badge b-ext">极端/领先</span>':'')+(c.u.isKOL?'<span class="badge b-kol">KOL</span>':'')+(c.u._aiTaken?'<span class="badge" style="background:rgba(0,212,255,.18);color:var(--cyan)">AI 画像</span>':'')+'<span style="font-size:11px;padding:2px 8px;border-radius:10px;background:rgba(239,68,68,.16);color:#fca5a5">风险 '+c.m.risk+'</span><span style="font-size:11px;padding:2px 8px;border-radius:10px;background:rgba(0,212,255,.14);color:#7dd3fc">相关度 '+((c.m.rel*100)|0)+'%</span><span style="font-size:11px;padding:2px 8px;border-radius:10px;background:rgba(168,85,247,.16);color:#d8b4fe">驱动：'+(DRIVER_LABEL[c.m.driver]||c.m.driver)+'</span>'+pmBadge+extraBadge+'</div>'+personaLine+sceneLine+'“'+esc(c.u.voice)+'”'+(c.m._extraDetail?('<div style="font-size:12.5px;color:#f9a8d4;margin-top:5px">↳ '+esc(c.m._extraDetail)+'</div>'):('<div style="font-size:12.5px;color:var(--ts);margin-top:5px">↳ '+esc(c.m.driverDetail)+(c.m.priceNote&&c.m.driver!=='price'?'；'+esc(c.m.priceNote):'')+'</div>'))+flawLine+'</div>';
+        return '<div class="cc"><div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px"><b>'+c.u.segName+'</b>（'+c.u.band+'）'+(c.u.extreme?'<span class="badge b-ext">极端/领先</span>':'')+(c.u.isKOL?'<span class="badge b-kol">KOL</span>':'')+(c.u._aiTaken?'<span class="badge" style="background:rgba(0,212,255,.18);color:var(--cyan)">AI 画像</span>':'')+'<span style="font-size:11px;padding:2px 8px;border-radius:10px;background:rgba(239,68,68,.16);color:#fca5a5">风险 '+c.m.risk+'</span><span style="font-size:11px;padding:2px 8px;border-radius:10px;background:rgba(0,212,255,.14);color:#7dd3fc">相关度 '+((c.m.rel*100)|0)+'%</span><span style="font-size:11px;padding:2px 8px;border-radius:10px;background:rgba(168,85,247,.16);color:#d8b4fe">驱动：'+(DRIVER_LABEL[c.m.driver]||c.m.driver)+'</span>'+pmBadge+'</div>'+personaLine+sceneLine+'“'+esc(c.u.voice)+'”'+(c.m._extraDetail?('<div style="font-size:12.5px;color:#f9a8d4;margin-top:5px">↳ '+esc(c.m._extraDetail)+'</div>'):('<div style="font-size:12.5px;color:var(--ts);margin-top:5px">↳ '+esc(c.m.driverDetail)+(c.m.priceNote&&c.m.driver!=='price'?'；'+esc(c.m.priceNote):'')+'</div>'))+flawLine+'</div>';
       }).join('')+'</div>':'')+
       (standalone?'<div class="report-card"><div class="note" style="margin:0 0 6px"><b style="color:var(--purple)">单独报告</b> · 可复制给智能体做多轮深挖</div><div style="font-size:12.5px;line-height:1.7;color:var(--ts);white-space:pre-wrap">'+esc(lastStressCtx)+'</div></div>':'');
     if(typeof out.scrollIntoView==='function') out.scrollIntoView({behavior:'smooth',block:'nearest'});
