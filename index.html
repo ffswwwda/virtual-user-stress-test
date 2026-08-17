@@ -1571,17 +1571,41 @@ async function callLLM(system, user){
   const cfg=getAICfg();
   if(!cfg.on||!cfg.key){ window.__aiLast={ok:false,reason:'未开启或无密钥'}; return null; }
   const url=(cfg.base.replace(/\/+$/,'')+'/chat/completions');
-  const ctrl=new AbortController(); const to=setTimeout(()=>ctrl.abort(),25000);
+  const ctrl=new AbortController(); const to=setTimeout(()=>ctrl.abort(),30000);
   try{
     const r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+cfg.key},
-      body:JSON.stringify({model:cfg.model,messages:[{role:'system',content:system},{role:'user',content:user}],temperature:0.6,max_tokens:600}),signal:ctrl.signal});
+      body:JSON.stringify({model:cfg.model,messages:[{role:'system',content:system},{role:'user',content:user}],temperature:0.6,max_tokens:1500}),signal:ctrl.signal});
     clearTimeout(to);
-    if(!r.ok){const e=await r.text().catch(()=> ''); let msg='HTTP '+r.status; try{const j=JSON.parse(e); if(j&&j.error&&j.error.message)msg+=' · '+j.error.message;}catch(_){ if(e)msg+=' · '+e.slice(0,120);} window.__aiLast={ok:false,reason:msg}; console.warn('LLM err',r.status,e); return null; }
-    const d=await r.json();
-    const c=(d.choices&&d.choices[0]&&d.choices[0].message&&d.choices[0].message.content)||null;
-    window.__aiLast={ok:!!c, reason:c?null:('HTTP '+r.status+' · 模型无内容返回')};
-    return c;
-  }catch(e){clearTimeout(to); const m=(e&&e.name==='AbortError')?'请求超时（25s）':('网络/跨域错误：'+(e&&e.message||e)); window.__aiLast={ok:false,reason:m}; console.warn('LLM fetch failed',e); return null;}
+    const raw=await r.text().catch(()=> '');
+    if(!r.ok){ let msg='HTTP '+r.status; try{const j=JSON.parse(raw); if(j&&j.error&&j.error.message)msg+=' · '+j.error.message;}catch(_){ if(raw)msg+=' · '+raw.slice(0,120);} window.__aiLast={ok:false,reason:msg,status:r.status,rawHead:raw.slice(0,200)}; console.warn('LLM err',r.status,raw); return null; }
+    let d; try{d=JSON.parse(raw);}catch(e){ window.__aiLast={ok:false,reason:'HTTP '+r.status+' · 返回非 JSON：'+raw.slice(0,120),status:r.status,rawHead:raw.slice(0,200)}; return null; }
+    // 完整诊断：把所有能告诉用户的字段都记录下来
+    const choices=d.choices||[];
+    const first=choices[0]||{};
+    const msg2=first.message||{};
+    const content=(typeof msg2.content==='string')?msg2.content:'';
+    const reasoning=(typeof msg2.reasoning_content==='string')?msg2.reasoning_content:'';
+    const finish=first.finish_reason||'(none)';
+    const usage=d.usage||{};
+    const diag={ok:false,status:r.status,model:d.model||cfg.model,finish_reason:finish,
+                content_len:content.length,reasoning_len:reasoning.length,
+                prompt_tokens:usage.prompt_tokens,completion_tokens:usage.completion_tokens,
+                rawHead:raw.slice(0,300)};
+    if(content && content.trim().length>0){
+      diag.ok=true; window.__aiLast=diag; return content;
+    }
+    // content 是空 → 给出具体原因
+    let why;
+    if(choices.length===0) why='DeepSeek 返回 choices 为空数组（可能账户欠费/限速，请到 DeepSeek 控制台看用量）';
+    else if(reasoning && !content) why='模型是 reasoning 模式（回答在 reasoning_content 字段，content 为空），请把模型改为 deepseek-chat 类普通对话模型';
+    else if(finish==='length') why='max_tokens 截断（请把上限提到 1500+；或缩短 prompt）';
+    else if(finish==='content_filter') why='触发内容策略过滤（已拦截，content 为空）';
+    else if(finish==='stop' && !content) why='模型主动空拒（可能被安全策略拦截）';
+    else why='content 为空（finish_reason='+finish+'）';
+    diag.reason=why; window.__aiLast=diag;
+    console.warn('LLM empty content',diag,raw.slice(0,300));
+    return null;
+  }catch(e){clearTimeout(to); const m=(e&&e.name==='AbortError')?'请求超时（30s）':('网络/跨域错误：'+(e&&e.message||e)); window.__aiLast={ok:false,reason:m}; console.warn('LLM fetch failed',e); return null;}
 }
 function aiTest(){
   const cfg=getAICfg();
@@ -1593,8 +1617,25 @@ function aiTest(){
     const last=window.__aiLast||{};
     if(box){
       box.style.display='block';
-      if(last.ok){ box.style.background='rgba(52,211,153,.14)'; box.style.color='#6ee7b7'; box.textContent='连接成功 · 模型 '+cfg.model+' 已响应：'+(t||'').slice(0,40); }
-      else { box.style.background='rgba(239,68,68,.12)'; box.style.color='#fca5a5'; box.textContent='连接失败：'+(last.reason||'未知错误')+'。请检查 Base URL / 模型名 / 密钥 / 网络。'; }
+      if(last.ok){
+        box.style.background='rgba(52,211,153,.14)'; box.style.color='#6ee7b7';
+        box.innerHTML='连接成功 · 模型 <b>'+escHtml(last.model||cfg.model)+'</b> 已响应：'+
+          escHtml((t||'').slice(0,40))+
+          (last.usage&&last.usage!==undefined?'<div style="font-size:11.5px;opacity:.8;margin-top:4px">tokens · prompt '+last.prompt_tokens+' / completion '+last.completion_tokens+'</div>':'');
+      } else {
+        box.style.background='rgba(239,68,68,.12)'; box.style.color='#fca5a5';
+        // 把诊断字段全列出来，方便用户一眼定位
+        const lines=['连接失败：'+(last.reason||'未知错误')];
+        lines.push('Base URL · '+cfg.base);
+        lines.push('模型名 · '+(last.model||cfg.model));
+        if(last.status) lines.push('HTTP 状态 · '+last.status);
+        if(last.finish_reason) lines.push('finish_reason · '+last.finish_reason);
+        if(last.content_len!==undefined) lines.push('content 长度 · '+last.content_len);
+        if(last.reasoning_len) lines.push('reasoning_content 长度 · '+last.reasoning_len+'（说明你用的是 reasoning 模式模型，请改用 deepseek-chat）');
+        if(last.rawHead) lines.push('原文前 200 字 · '+last.rawHead.replace(/\s+/g,' '));
+        box.style.whiteSpace='pre-wrap'; box.style.fontSize='12px'; box.style.lineHeight='1.6';
+        box.textContent=lines.join('\n');
+      }
     }
   });
 }
